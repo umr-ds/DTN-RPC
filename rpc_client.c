@@ -19,7 +19,7 @@ int received = 0;
 //    mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
 //
 //    if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
-//        WARN("COULD NOT BIND");
+//        printf("RPC WARN: COULD NOT BIND\n");
 //        return -1;
 //    }
 //
@@ -32,7 +32,7 @@ int received = 0;
 //        memcpy(&payload[2], rpc_name, strlen(rpc_name));
 //
 //        if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0){
-//            //DEBUG(rpc, "SEND FAIL");
+//            printf("RPC DEBUG: SEND FAIL\n");
 //            return -1;
 //        }
 //        if (mdp_poll(mdp_sockfd, 500)<=0)
@@ -43,13 +43,13 @@ int received = 0;
 //        ssize_t len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
 //
 //        if (len < 0) {
-//            //DEBUG(rpc, "LEN FAIL");
+//            printf("RPC DEBUG: LEN FAIL\n");
 //            break;
 //        }
 //
 //        if (read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER_ACK) {
 //            acked = 1;
-//            //DEBUGF(rpc, "RECEIVED: %d, LEN: %i", read_uint16(&recv_payload[0]), len);
+//            printf("RPC DEBUG: RECEIVED: %d, LEN: %i\n", read_uint16(&recv_payload[0]), len);
 //        }
 //
 //
@@ -63,14 +63,14 @@ size_t client_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 
     // If there is an errer on the socket, stop it.
     if (state & (MSP_STATE_CLOSED | MSP_STATE_ERROR)) {
-        WARN("Socket closed.");
+        printf("RPC WARN: Socket closed.\n");
         received = received == 1 || received == 2 ? received : -1;
         msp_stop(sock);
     }
 
     // If the other site closed the connection, we do also.
     if (state & MSP_STATE_SHUTDOWN_REMOTE) {
-        WARN("Socket shutdown");
+        printf("RPC WARN: Socket shutdown\n");
         received = received == 1 || received == 2 ? received : -1;
         msp_shutdown(sock);
     }
@@ -82,10 +82,10 @@ size_t client_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
         uint16_t pkt_type = read_uint16(&payload[0]);
         // If we receive an ACK, just print.
         if (pkt_type == RPC_PKT_CALL_ACK) {
-            //DEBUG(rpc, "Server accepted call.");
+            printf("RPC DEBUG: Server accepted call.\n");
             received = 1;
         } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
-            //DEBUG(rpc, "Answer received.");
+            printf("RPC DEBUG: Answer received.\n");
             memcpy(rpc_result, &payload[2], len - 2);
             received = 2;
         }
@@ -143,7 +143,7 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     // ... and all params.
     memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params));
 
-    //DEBUGF(rpc, "Calling %s for %s.", alloca_tohex_sid_t(sid), rpc_name);
+    printf("RPC DEBUG: Calling %s for %s.\n", alloca_tohex_sid_t(sid), rpc_name);
 
     // Send the payload.
     msp_send(sock, payload, sizeof(payload));
@@ -216,22 +216,22 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
     // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
     if (rhizome_opendb() == -1){
-        WARN("Could not open rhizome database. Aborting.");
+        printf("RPC WARN: Could not open rhizome database. Aborting.\n");
         return -1;
     }
     if (create_serval_instance_dir() == -1){
-        WARN("Could not open serval instance directory. Aborting.");
+        printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
         return -1;
     }
     if (!(keyring = keyring_open_instance(""))){
-        WARN("Could not open keyring file. Aborting.");
+        printf("RPC WARN: Could not open keyring file. Aborting.\n");
         return -1;
     }
     keyring_enter_pin(keyring, "");
 
     // Initialize the manifest.
     if ((m = rhizome_new_manifest()) == NULL){
-        WARN("Could not create a new manifest. Aborting.");
+        printf("RPC WARN: Could not create a new manifest. Aborting.\n");
         return -1;
     }
 
@@ -245,13 +245,15 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
     tmpnam(tmp_file_name);
 
+    printf("RPC DEBUG: Filename: %s", tmp_file_name);
+
     rpc_write_file(rpc_name, paramc, params, tmp_file_name);
 
     result = rhizome_manifest_add_file(0, m, &mout, NULL, NULL, &my_subscriber->sid, tmp_file_name, 0, NULL);
 
 
     if (result.status != RHIZOME_BUNDLE_STATUS_NEW) {
-        WARN("RPC is not new. Aborting.");
+        printf("RPC WARN: RPC is not new. Aborting.\n");
         return -1;
     }
 
@@ -291,7 +293,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
         case RHIZOME_PAYLOAD_STATUS_EVICTED:
             pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_NO_ROOM;
-            INFO("Insufficient space to store payload");
+            printf("RPC INFO: Insufficient space to store payload.\n");
             break;
         case RHIZOME_PAYLOAD_STATUS_ERROR:
             pstatus_valid = 1;
@@ -368,11 +370,11 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
                 // Read the content of the file, while its not empty.
                 while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
                     if (read_uint16(&buffer[0]) == RPC_PKT_CALL_ACK){
-                        //DEBUG(rpc, "Received ACK via Rhizome. Waiting.");
+                        printf("RPC DEBUG: Received ACK via Rhizome. Waiting.\n");
                         manifest_ids[1] = m->cryptoSignPublic;
                         file_ids[1] = m->filehash;
                     } else if (read_uint16(&buffer[0]) == RPC_PKT_CALL_RESPONSE) {
-                        //DEBUGF(rpc, "Received result.");
+                        printf("RPC DEBUG: Received result.\n");
                         memcpy(rpc_result, &buffer[2], m->filesize - 2);
                         return_code = 2;
                         received = 1;
@@ -390,7 +392,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     }
 
     // Now we can clean up and free everything.
-    unlink(tmp_file_name);
+    remove(tmp_file_name);
     rhizome_list_release(&cursor);
     rhizome_bundle_result_free(&result);
     int i;
@@ -415,14 +417,14 @@ int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, co
         int call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);//rpc_call_msp(server_sid, rpc_name, paramc, params);
 
         if (call_return == -1) {
-            WARN("Server not available via MSP. Trying Rhizome.");
+            printf("RPC WARN: Server not available via MSP. Trying Rhizome.\n");
             //call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);
             return -1;
         } else if (call_return == 0) {
-            //DEBUGF(rpc, "NOT RECEIVED ACK");
+            printf("RPC DEBUG: NOT RECEIVED ACK\n");
             return -1;
         } else if (call_return == 1) {
-            //DEBUGF(rpc, "COULD NOT COLLECT RESULT AFTER ACK");
+            printf("RPC DEBUG: COULD NOT COLLECT RESULT AFTER ACK\n");
             return -1;
         } else {
             return 0;
@@ -430,47 +432,4 @@ int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, co
     }
 
     return 1;
-}
-
-
-DEFINE_CMD(rpc_call_cli, 0,
-           "CLI command for calling a remote procedure.",
-           "call", "[--mode=<mode>]", "<sid>", "<name>", "<param1>", "...");
-int rpc_call_cli(const struct cli_parsed *parsed, struct cli_context *UNUSED(context)){
-    // Parse params.
-    const char *mode, *sidhex, *name, *param1;
-    if (cli_arg(parsed, "mode", &mode, NULL, "t") == -1)
-        return -1;
-    if (cli_arg(parsed, "sid", &sidhex, str_is_subscriber_id, "") == -1)
-        return -1;
-    if (cli_arg(parsed, "name", &name, NULL, "") == -1)
-        return -1;
-    if (cli_arg(parsed, "param1", &param1, NULL, "") == -1)
-        return -1;
-
-    sid_t sid;
-    if (str_to_sid_t(&sid, sidhex) == -1)
-        return WHY("str_to_sid_t() failed");
-
-    // Get length of additional arguments...
-    unsigned int nfields = (parsed->varargi == -1) ? 0 : parsed->argc - (unsigned)parsed->varargi;
-    // and create new parameter array of the particular length.
-    const char *params[nfields + 1];
-    params[0] = param1;
-    // Parse additional arguments:
-    unsigned int i;
-    for (i = 0; i < nfields; i++) {
-        // Skip to next parameter and save it in params at position i.
-        unsigned int n = (unsigned) parsed->varargi + i;
-        params[i + 1] = parsed->args[n];
-    }
-
-    int ret_code = rpc_call(sid, name, nfields + 1, params);
-    if (ret_code == 0) {
-        cli_put_string(context, "RPC result:", " ");
-        cli_put_string(context, (char *) rpc_result, "");
-        return 0;
-    }
-    cli_put_string(context, "Something went wrong. No result.", "\n");
-    return -1;
 }

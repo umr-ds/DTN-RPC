@@ -15,7 +15,7 @@ int mdp_fd;
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
 int rpc_check_offered (struct rpc_procedure *rp) {
-    //DEBUGF(rpc, "Checking, if %s is offered.", rp->name);
+    printf("RPC DEBUG: Checking, if %s is offered.\n", rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + 9 + strlen("rpc.conf")] = "";
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
@@ -55,7 +55,7 @@ int rpc_check_offered (struct rpc_procedure *rp) {
 
 // Function to parse the received payload.
 struct rpc_procedure rpc_parse_call (const uint8_t *payload, size_t len) {
-    //DEBUG(rpc, "Parsing call.");
+    printf("RPC DEBUG: Parsing call.\n");
     // Create a new rp struct.
     struct rpc_procedure rp;
 
@@ -95,22 +95,22 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 
     // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
     if (rhizome_opendb() == -1){
-        WARN("Could not open rhizome database. Aborting.");
+        printf("RPC WARN: Could not open rhizome database. Aborting.\n");
         return -1;
     }
     if (create_serval_instance_dir() == -1){
-        WARN("Could not open serval instance directory. Aborting.");
+        printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
         return -1;
     }
     if (!(keyring = keyring_open_instance(""))){
-        WARN("Could not open keyring file. Aborting.");
+        printf("RPC WARN: Could not open keyring file. Aborting.\n");
         return -1;
     }
     keyring_enter_pin(keyring, "");
 
     // Initialize the manifest.
     if ((m = rhizome_new_manifest()) == NULL){
-        WARN("Could not create a new manifest. Aborting.");
+        printf("RPC WARN: Could not create a new manifest. Aborting.\n");
         return -1;
     }
 
@@ -135,7 +135,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 
 
     if (result.status != RHIZOME_BUNDLE_STATUS_NEW) {
-        WARN("RPC is not new. Aborting.");
+        printf("RPC WARN: RPC is not new. Aborting.\n");
         return -1;
     }
 
@@ -175,7 +175,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
         case RHIZOME_PAYLOAD_STATUS_EVICTED:
             pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_NO_ROOM;
-            INFO("Insufficient space to store payload");
+            printf("RPC INFO: Insufficient space to store payload.\n");
             break;
         case RHIZOME_PAYLOAD_STATUS_ERROR:
             pstatus_valid = 1;
@@ -223,12 +223,12 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 
 // Execute the procedure
 int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
-    //DEBUGF(rpc, "Executing %s.", rp.name);
+    printf("RPC DEBUG: Executing %s.\n", rp.name);
     FILE *pipe_fp;
 
     // Compile the rpc name and the path of the binary to one string.
-    char bin[strlen(rp.name) + strlen(SYSCONFDIR) + 17];
-    //FORMF_RPC_BIN_PATH(bin, "%s", rp.name);
+    char bin[strlen(rp.name) + strlen("/usr/local/etc/serval/rpc_bin/")];
+    sprintf(bin, "%s%s", "/usr/local/etc/serval/rpc_bin/", rp.name);
 
     // Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
     // we have to compile the bin with all parameters from the struct.
@@ -244,7 +244,7 @@ int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
 
     // Open the pipe.
     if ((pipe_fp = popen(flat_params, "r")) == NULL) {
-        WARN("Could not open the pipe. Aborting.");
+        printf("RPC WARN: Could not open the pipe. Aborting.\n");
         return -1;
     }
 
@@ -260,21 +260,21 @@ int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {
-            WARNF("Execution of \"%s\" went wrong. See errormessages above for more information. Status %i", flat_params, WEXITSTATUS(ret_code));
+            printf("RPC WARN: Execution of \"%s\" went wrong. See errormessages above for more information. Status %i\n", flat_params, WEXITSTATUS(ret_code));
             return -1;
         }
-        //DEBUG(rpc, "Returned result from Binary.");
+        printf("RPC DEBUG: RPC DEBUG: Returned result from Binary.\n");
     } else {
         return -1;
     }
 
     // If the connection is still alive, send the result back.
     if (!msp_socket_is_null(sock) && msp_socket_is_data(sock) == 1) {
-        //DEBUG(rpc, "Sending result via MSP.");
+        printf("RPC DEBUG: RPC DEBUG: Sending result via MSP.\n");
         msp_send(sock, payload, sizeof(payload));
         return 0;
     } else {
-        //DEBUG(rpc, "Sending result via RHIZOME.");
+        printf("RPC DEBUG: Sending result via RHIZOME.\n");
         rpc_send_rhizome(rp.caller_sid, rp.name, payload);
         return 0;
     }
@@ -288,22 +288,22 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 
     // If there is an errer on the socket, stop it.
     if (state & (MSP_STATE_SHUTDOWN_REMOTE | MSP_STATE_CLOSED | MSP_STATE_ERROR)) {
-        WARN("Socket closed.");
+        printf("RPC WARN: Socket closed.\n");
         msp_stop(sock);
-        ret = 1;
+        ret = len;
     }
 
     // If we receive something, handle it.
     if (payload && len) {
         // First make sure, we received a RPC call packet.
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
-            //DEBUG(rpc, "Received RPC via MSP.");
+            printf("RPC DEBUG: Received RPC via MSP.\n");
             // Parse the payload to the rpc_procedure struct
             struct rpc_procedure rp = rpc_parse_call(payload, len);
 
             // Check, if we offer this procedure.
             if (rpc_check_offered(&rp) == 0) {
-                //DEBUG(rpc, "Offering desired RPC. Sending ACK.");
+                printf("RPC DEBUG: Offering desired RPC. Sending ACK.\n");
                 // Compile and send ACK packet.
                 uint8_t ack_payload[2];
                 write_uint16(&ack_payload[0], RPC_PKT_CALL_ACK);
@@ -311,14 +311,14 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 
                 // Try to execute the procedure.
                 if (rpc_excecute(rp, sock) == 0) {
-                    //DEBUG(rpc, "RPC execution was successful.");
+                    printf("RPC DEBUG: RPC execution was successful.\n");
                     ret = len;
                 } else {
                     ret = len;
                     status = 2;
                 }
             } else {
-                //DEBUG(rpc, "Not offering desired RPC. Aborting.");
+                printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
                 ret = len;
                 status = 1;
             }
@@ -327,8 +327,8 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
     return ret;
 }
 
-void stopHandler (int UNUSED(signum)) {
-    //DEBUGF(rpc, "Caught signal with signum %i. Stopping RPC server.", signum);
+void stopHandler (int signum) {
+    printf("RPC DEBUG: Caught signal with signum %i. Stopping RPC server.\n", signum);
     running = 1;
 }
 
@@ -338,15 +338,15 @@ int rpc_listen_rhizome () {
 
     // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
     if (rhizome_opendb() == -1){
-        WARN("Could not open rhizome database. Aborting.");
+        printf("RPC WARN: Could not open rhizome database. Aborting.\n");
         return -1;
     }
     if (create_serval_instance_dir() == -1){
-        WARN("Could not open serval instance directory. Aborting.");
+        printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
         return -1;
     }
     if (!(keyring = keyring_open_instance(""))){
-        WARN("Could not open keyring file. Aborting.");
+        printf("RPC WARN: Could not open keyring file. Aborting.\n");
         return -1;
     }
     keyring_enter_pin(keyring, "");
@@ -383,14 +383,14 @@ int rpc_listen_rhizome () {
             // Read the content of the file, while its not empty.
             while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
                 if (read_uint16(&buffer[0]) == RPC_PKT_CALL) {
-                    //DEBUG(rpc, "Received RPC via Rhizome.");
+                    printf("RPC DEBUG: Received RPC via Rhizome.\n");
                     // Parse the payload to the rpc_procedure struct
                     struct rpc_procedure rp = rpc_parse_call(buffer, m->filesize);
                     rp.caller_sid = m->sender;
 
                     // Check, if we offer this procedure.
                     if (rpc_check_offered(&rp) == 0) {
-                        //DEBUG(rpc, "Offering desired RPC. Sending ACK via Rhizome.");
+                        printf("RPC DEBUG: Offering desired RPC. Sending ACK via Rhizome.\n");
                         // Compile and send ACK packet.
 
                         uint8_t payload[2];
@@ -400,12 +400,12 @@ int rpc_listen_rhizome () {
 
                         // Try to execute the procedure.
                         if (rpc_excecute(rp, MSP_SOCKET_NULL) == 0) {
-                            //DEBUG(rpc, "RPC execution was successful.");
+                            printf("RPC DEBUG: RPC execution was successful.\n");
                         } else {
                             status = 2;
                         }
                     } else {
-                        //DEBUG(rpc, "Not offering desired RPC. Aborting.");
+                        printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
                         status = 1;
                     }
                 }
@@ -417,14 +417,6 @@ int rpc_listen_rhizome () {
     return 0;
 }
 
-DEFINE_CMD(rpc_recv_cli, 0,
-           "Just a Test",
-           "listen");
-int rpc_recv_cli(const struct cli_parsed *UNUSED(parsed), struct cli_context *UNUSED(context)){
-    return rpc_listen();
-}
-
-// Main RPC server listener.
 int rpc_listen () {
     // Create address struct ...
     struct mdp_sockaddr addr;
@@ -439,6 +431,7 @@ int rpc_listen () {
     // Sockets should not block.
     set_nonblock(mdp_fd);
     set_nonblock(STDIN_FILENO);
+    set_nonblock(STDERR_FILENO);
     set_nonblock(STDOUT_FILENO);
 
     // Create MSP socket.
@@ -454,11 +447,19 @@ int rpc_listen () {
     signal(SIGINT, stopHandler);
     signal(SIGTERM, stopHandler);
 
+    time_ms_t next_time;
+
     // Listen.
-    while(running == 0){
+    while(running < 2){
+        if (running == 1) {
+            sock = MSP_SOCKET_NULL;
+            msp_close_all(mdp_fd);
+            mdp_close(mdp_fd);
+            msp_processing(&next_time);
+            break;
+        }
         rpc_listen_rhizome();
         // Process MSP socket
-        time_ms_t next_time;
         msp_processing(&next_time);
 
         msp_recv(mdp_fd);
@@ -467,10 +468,6 @@ int rpc_listen () {
         sleep(1);
 
     }
-
-    sock = MSP_SOCKET_NULL;
-    msp_close_all(mdp_fd);
-    mdp_close(mdp_fd);
 
     return 0;
 }

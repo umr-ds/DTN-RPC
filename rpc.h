@@ -1,5 +1,6 @@
 #include "rhizome.h"
 #include "serval.h"
+#include "server.h"
 #include "conf.h"
 #include "commandline.h"
 #include "mdp_client.h"
