@@ -27,21 +27,3 @@ int rpc_listen ();
 
 // Client part.
 int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
-
-/*****************************************************************************************************************/
-/* RHIZOME PART. DEPRECATED. */
-
-struct remote_procedure {
-    sid_t publisher_sid;
-    const char *return_type;
-    const char *name;
-    int paramc;
-    const char **params;
-};
-
-void rpc_write_file_rhizome (struct remote_procedure procedure, char *filepath);
-int rpc_add_manifest_rhizome (sid_t publisher_sid, char *filepath, const char *rpc_name);
-int rpc_publish_rhizome (sid_t publisher_sid, const char *return_type, const char *rpc_name, const char *params[]);
-
-/* RHIZOME PART END. */
-/*****************************************************************************************************************/
