@@ -179,24 +179,22 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     return received;
 }
 
-size_t rpc_form_rhizome_payload (const char *rpc_name, const int paramc, const char **params, uint8_t *payload) {
+char* rpc_flatten_params (const int paramc, const char **params) {
     // Prepare 2D array of params to 1D for serialization. Use '|' as a seperator.
-    char *flat_params  = malloc(sizeof(char *));
-    sprintf(flat_params, "|%s", params[0]);
+    size_t params_size = 0;
     int i;
+    for (i = 0; i < paramc; i++){
+        params_size = params_size + strlen(params[i]);
+    }
+
+    char *flat_params  = malloc(params_size);
+    sprintf(flat_params, "|%s", params[0]);
     for (i = 1; i < paramc; i++) {
         strcat(flat_params, "|");
         strncat(flat_params, params[i], strlen(params[i]));
     }
 
-    size_t payload_size = 2 + 2 + strlen(rpc_name) + strlen(flat_params);
-    payload = malloc(payload_size);
-    write_uint16(&payload[0], RPC_PKT_CALL);
-    write_uint16(&payload[2], (uint16_t) paramc);
-    memcpy(&payload[4], rpc_name, strlen(rpc_name));
-    memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params) + 1);
-
-    return payload_size;
+    return flat_params;
 }
 
 int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
@@ -231,9 +229,16 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
         return -1;
     }
 
+    char *payload_flat_params = rpc_flatten_params(paramc, params);
+
+    size_t payload_size = 2 + 2 + strlen(rpc_name) + strlen(payload_flat_params);
+    uint8_t payload[payload_size];
+    write_uint16(&payload[0], RPC_PKT_CALL);
+    write_uint16(&payload[2], (uint16_t) paramc);
+    memcpy(&payload[4], rpc_name, strlen(rpc_name));
+    memcpy(&payload[4 + strlen(rpc_name)], payload_flat_params, strlen(payload_flat_params) + 1);
+
     rhizome_manifest *mout = NULL;
-    uint8_t **payload = NULL;
-    size_t payload_size = rpc_form_rhizome_payload(rpc_name, paramc, params, *payload);
 
     rhizome_manifest_set_service(m, "RPC");
     rhizome_manifest_set_name(m, rpc_name);
@@ -248,7 +253,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
         return -1;
     }
 
-    if (rhizome_write_buffer(&write, *payload, payload_size) == -1){
+    if (rhizome_write_buffer(&write, payload, payload_size) == -1){
         printf("RPC WARN: Could not write payload buffer. Aborting.\n");
         return -1;
     }
@@ -331,6 +336,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
                 while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
                     if (read_uint16(&buffer[0]) == RPC_PKT_CALL_ACK){
                         printf("RPC DEBUG: Received ACK via Rhizome. Waiting.\n");
+                        timeout = time(NULL);
                         manifest_ids[1] = m->cryptoSignPublic;
                         file_ids[1] = m->filehash;
                     } else if (read_uint16(&buffer[0]) == RPC_PKT_CALL_RESPONSE) {

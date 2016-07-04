@@ -36,7 +36,7 @@ libservalrpc.a: $(OBJS)
 	@ar rcs libservalrpc.a $^
 
 # Build servalrpc
-servalrpc: $(RPC_SRC) libservalrpc.a
+servalrpc: $(RPC_SRC)
 	@$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 # Remove only the servalrpc binary
