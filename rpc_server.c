@@ -1,6 +1,8 @@
 #include "rpc.h"
 
 #define RPC_CONF_FILENAME "rpc.conf"
+#define SERVAL_FOLDER "/serval/"
+#define BIN_FOLDER "/serval/rpc_bin/"
 
 // This var is to have some global server status to handle RPCs in an appropriate way.
 // 0: everything okay.
@@ -17,7 +19,7 @@ int mdp_fd;
 int rpc_check_offered (struct rpc_procedure *rp) {
     printf("RPC DEBUG: Checking, if %s is offered.\n", rp->name);
     // Build the path to the rpc.conf file and open it.
-    static char path[strlen(SYSCONFDIR) + 9 + strlen("rpc.conf")] = "";
+    static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
     FILE *conf_file = fopen(path, "r");
 
@@ -227,8 +229,8 @@ int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
     FILE *pipe_fp;
 
     // Compile the rpc name and the path of the binary to one string.
-    char bin[strlen(rp.name) + strlen("/usr/local/etc/serval/rpc_bin/")];
-    sprintf(bin, "%s%s", "/usr/local/etc/serval/rpc_bin/", rp.name);
+    char bin[strlen(SYSCONFDIR) + strlen(BIN_FOLDER) + strlen(rp.name)];
+    sprintf(bin, "%s%s%s", SYSCONFDIR, BIN_FOLDER, rp.name);
 
     // Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
     // we have to compile the bin with all parameters from the struct.

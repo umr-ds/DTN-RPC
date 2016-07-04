@@ -179,10 +179,7 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     return received;
 }
 
-void rpc_write_file (const char *rpc_name, const int paramc, const char **params, char *filepath) {
-    // Open the file.
-    FILE *rpc_file = fopen(filepath, "w+");
-
+size_t rpc_form_rhizome_payload (const char *rpc_name, const int paramc, const char **params, uint8_t *payload) {
     // Prepare 2D array of params to 1D for serialization. Use '|' as a seperator.
     char *flat_params  = malloc(sizeof(char *));
     sprintf(flat_params, "|%s", params[0]);
@@ -192,16 +189,14 @@ void rpc_write_file (const char *rpc_name, const int paramc, const char **params
         strncat(flat_params, params[i], strlen(params[i]));
     }
 
-    uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params)];
+    size_t payload_size = 2 + 2 + strlen(rpc_name) + strlen(flat_params);
+    payload = malloc(payload_size);
     write_uint16(&payload[0], RPC_PKT_CALL);
     write_uint16(&payload[2], (uint16_t) paramc);
     memcpy(&payload[4], rpc_name, strlen(rpc_name));
     memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params) + 1);
 
-    fwrite(payload, sizeof(payload), sizeof(payload), rpc_file);
-
-    // Close the file.
-    fclose(rpc_file);
+    return payload_size;
 }
 
 int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
@@ -212,7 +207,8 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
     // Create new empty manifest and a bundle result struct for keeping track of particular execution results.*/
     rhizome_manifest *m = NULL;
-    struct rhizome_bundle_result result = INVALID_RHIZOME_BUNDLE_RESULT;
+    struct rhizome_write write;
+    bzero(&write, sizeof(write));
 
     // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
     if (rhizome_opendb() == -1){
@@ -236,97 +232,61 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     }
 
     rhizome_manifest *mout = NULL;
+    uint8_t **payload = NULL;
+    size_t payload_size = rpc_form_rhizome_payload(rpc_name, paramc, params, *payload);
+
     rhizome_manifest_set_service(m, "RPC");
     rhizome_manifest_set_name(m, rpc_name);
     rhizome_manifest_set_sender(m, &my_subscriber->sid);
     rhizome_manifest_set_recipient(m, &sid);
+    rhizome_manifest_set_filesize(m, payload_size);
 
-    char tmp_file_name[L_tmpnam];
+    enum rhizome_payload_status pstatus = rhizome_write_open_manifest(&write, m);
 
-    tmpnam(tmp_file_name);
-
-    printf("RPC DEBUG: Filename: %s", tmp_file_name);
-
-    rpc_write_file(rpc_name, paramc, params, tmp_file_name);
-
-    result = rhizome_manifest_add_file(0, m, &mout, NULL, NULL, &my_subscriber->sid, tmp_file_name, 0, NULL);
-
-
-    if (result.status != RHIZOME_BUNDLE_STATUS_NEW) {
-        printf("RPC WARN: RPC is not new. Aborting.\n");
+    if (pstatus != RHIZOME_PAYLOAD_STATUS_NEW){
+        printf("RPC WARN: RPC is not new; status = %i. Aborting.\n", pstatus);
         return -1;
     }
 
-    // Make sure, m is the same as mout, since the final manifest was written to mout in rhizome_manifest_add_file.
-    // We now can throw away mout.
-    if (mout != m) {
-        rhizome_manifest_free(m);
-        m = mout;
+    if (rhizome_write_buffer(&write, *payload, payload_size) == -1){
+        printf("RPC WARN: Could not write payload buffer. Aborting.\n");
+        return -1;
     }
-    mout = NULL;
-
-    // Create a playload_status variable for the status of the payload, since the payload was not imported yet.
-    enum rhizome_payload_status pstatus;
-
-    // Check, if the payload is new in terms of this payload is not in the rhizome store, yet.
-    pstatus = rhizome_stat_payload_file(m, tmp_file_name);
-    // If the payload is new, ...
-    if (pstatus == RHIZOME_PAYLOAD_STATUS_NEW) {
-        // store the payload.
-        pstatus = rhizome_store_payload_file(m, tmp_file_name);
+    pstatus = rhizome_finish_write(&write);
+    if (pstatus != RHIZOME_PAYLOAD_STATUS_NEW){
+        printf("RPC WARN: RPC is not new; status = %i. Aborting.\n", pstatus);
+        return -1;
     }
+    rhizome_manifest_set_filehash(m, &write.id);
+    struct rhizome_bundle_result result = rhizome_manifest_finalise(m, &mout, 1);
 
-    // Reset the result struct.
-    rhizome_bundle_result_free(&result);
-    // Per default, consider the payload is not valid.
-    int pstatus_valid = 0;
-    // Check for errors. If any of the below cases matches, the payload is valid, even, if it is an error.
-    // It is only not valid, if one of the below cases does not match. I can't imagine a case, where this can happen, but ok.
-    switch (pstatus) {
+    switch (result.status) {
         case RHIZOME_PAYLOAD_STATUS_EMPTY:
         case RHIZOME_PAYLOAD_STATUS_STORED:
         case RHIZOME_PAYLOAD_STATUS_NEW:
-            pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_NEW;
             break;
         case RHIZOME_PAYLOAD_STATUS_TOO_BIG:
         case RHIZOME_PAYLOAD_STATUS_EVICTED:
-            pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_NO_ROOM;
             printf("RPC INFO: Insufficient space to store payload.\n");
             break;
         case RHIZOME_PAYLOAD_STATUS_ERROR:
-            pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_ERROR;
             break;
         case RHIZOME_PAYLOAD_STATUS_WRONG_SIZE:
         case RHIZOME_PAYLOAD_STATUS_WRONG_HASH:
-            pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_INCONSISTENT;
             break;
         case RHIZOME_PAYLOAD_STATUS_CRYPTO_FAIL:
-            pstatus_valid = 1;
             result.status = RHIZOME_BUNDLE_STATUS_READONLY;
             break;
+        case RHIZOME_BUNDLE_STATUS_READONLY:
+        case RHIZOME_BUNDLE_STATUS_BUSY:
+        case RHIZOME_BUNDLE_STATUS_MANIFEST_TOO_BIG:
+            break;
     }
-    if (!pstatus_valid)
-        FATALF("pstatus = %d", pstatus);
-
-    // If the status indicates, that the bundle is new, check if the manifest is valid and not malformed.
-    if (result.status == RHIZOME_BUNDLE_STATUS_NEW) {
-        if (!rhizome_manifest_validate(m) || m->malformed)
-            result.status = RHIZOME_BUNDLE_STATUS_INVALID;
-        else {
-            // If everything seems to be okay, we can finalize the manifest. At this point, the RPC is written do disk.
-            rhizome_bundle_result_free(&result);
-            result = rhizome_manifest_finalise(m, &mout, 0);
-            if (mout && mout != m && !rhizome_manifest_validate(mout)) {
-                WHYF("Stored manifest id=%s is invalid -- overwriting", alloca_tohex_rhizome_bid_t(mout->cryptoSignPublic));
-                rhizome_bundle_result_free(&result);
-                result = rhizome_bundle_result(RHIZOME_BUNDLE_STATUS_NEW);
-            }
-        }
-    }
+    rhizome_bundle_result_free(&result);
 
     manifest_ids[0] = m->cryptoSignPublic;
     file_ids[0] = m->filehash;
@@ -346,7 +306,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
     time_t timeout = time(NULL);
     while (received == 0) {
-        // We only wait for 3 seconds.
+        // We only wait for 3 seconds (while developing. Lateron definitely longer).
         if ((double) (time(NULL) - timeout) >= 3.0) {
             break;
         }
@@ -392,7 +352,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     }
 
     // Now we can clean up and free everything.
-    remove(tmp_file_name);
+    //remove(tmp_file_name);
     rhizome_list_release(&cursor);
     rhizome_bundle_result_free(&result);
     int i;

@@ -14,7 +14,7 @@ CFLAGS += -O3 -fPIC -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 CFLAGS += -fstack-protector-all --param=ssp-buffer-size=4
 # SQLite (disable data functions, disable interactive compiling, no deprecated functions, disable extension loading functions, no virtual tables, no authorization)
 CFLAGS += -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_DATETIME_FUNCS -DSQLITE_OMIT_COMPILEOPTION_DIAGS -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_VIRTUALTABLE -DSQLITE_OMIT_AUTHORIZATION
-# Enable some functions defined in POSIX 600 standard (i.e. tmpnam) and definitions normally not available or deprecated in OS X (i.e bzero).
+# Enable some functions defined in POSIX 600 standard and definitions normally not available or deprecated in macOS (i.e bzero).
 CFLAGS += -D_XOPEN_SOURCE=600 -D_DARWIN_C_SOURCE
 # Enable all and even more warnings, treat them as errors and show all errors.
 CFLAGS += -Wall -Wextra -Werror -ferror-limit=0
