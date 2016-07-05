@@ -249,7 +249,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     enum rhizome_payload_status pstatus = rhizome_write_open_manifest(&write, m);
 
     if (pstatus != RHIZOME_PAYLOAD_STATUS_NEW){
-        printf("RPC WARN: RPC is not new; status = %i. Aborting.\n", pstatus);
+        printf("RPC WARN: %s. Aborting.\n", rhizome_payload_status_message(pstatus));
         return -1;
     }
 
@@ -259,7 +259,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     }
     pstatus = rhizome_finish_write(&write);
     if (pstatus != RHIZOME_PAYLOAD_STATUS_NEW){
-        printf("RPC WARN: RPC is not new; status = %i. Aborting.\n", pstatus);
+        printf("RPC WARN: %s. Aborting.\n", rhizome_payload_status_message(pstatus));
         return -1;
     }
     rhizome_manifest_set_filehash(m, &write.id);

@@ -1,12 +1,13 @@
 prefix = /usr/local
 sysconfdir = ${prefix}/etc
+localstatedir = ${prefix}/var
 
 CC = gcc
 
 # Include search paths
 CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include
 # sysconfdir definition
-CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\""
+CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\"" -DLOCALSTATEDIR="\"$(localstatedir)\""
 # Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.
 # Also add security checks for functions like memcpy, strcpy, etc.
 CFLAGS += -O3 -fPIC -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
@@ -19,7 +20,7 @@ CFLAGS += -D_XOPEN_SOURCE=600 -D_DARWIN_C_SOURCE
 # Enable all and even more warnings, treat them as errors and show all errors.
 CFLAGS += -Wall -Wextra -Werror -ferror-limit=0
 # Some additional definitions, to not include headers for things like bzero or poll, ...
-CFLAGS += -DPACKAGE_NAME=\"ServalRPC\" -DPACKAGE_TARNAME=\"ServalRPC\" -DPACKAGE_VERSION=\"0.1\" -DPACKAGE_STRING=\"ServalRPC\ 0.1\" -DHAVE_FUNC_ATTRIBUTE_ALIGNED=1 -DHAVE_FUNC_ATTRIBUTE_UNUSED=1 -DHAVE_FUNC_ATTRIBUTE_USED=1 -DHAVE_VAR_ATTRIBUTE_SECTION_SEG=1 -DHAVE_BCOPY=1 -DHAVE_BZERO=1 -DHAVE_BCMP=1 -DSIZEOF_OFF_T=8 -DHAVE_ARPA_INET_H=1 -DHAVE_POLL_H=1 -DHAVE_NET_IF_H=1 -DHAVE_NETINET_IN_H=1
+CFLAGS += -DPACKAGE_NAME=\"ServalRPC\" -DPACKAGE_TARNAME=\"ServalRPC\" -DPACKAGE_VERSION=\"0.1\" -DPACKAGE_STRING=\"ServalRPC\ 0.1\" -DHAVE_FUNC_ATTRIBUTE_ALIGNED=1 -DHAVE_FUNC_ATTRIBUTE_UNUSED=1 -DHAVE_FUNC_ATTRIBUTE_USED=1 -DHAVE_VAR_ATTRIBUTE_SECTION_SEG=1 -DHAVE_BCOPY=1 -DHAVE_BZERO=1 -DHAVE_BCMP=1 -DSIZEOF_OFF_T=8 -DHAVE_ARPA_INET_H=1 -DHAVE_POLL_H=1 -DHAVE_NET_IF_H=1 -DHAVE_NETINET_IN_H=1 -DHAVE_SYS_STATVFS_H=1 -DHAVE_SYS_STAT_H=1
 
 # Use the static serval library we compile.
 LDFLAGS= -L. -lservalrpc
