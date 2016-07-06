@@ -187,7 +187,7 @@ char* rpc_flatten_params (const int paramc, const char **params) {
         params_size = params_size + strlen(params[i]);
     }
 
-    char *flat_params  = malloc(params_size);
+    char *flat_params  = malloc(params_size + paramc);
     sprintf(flat_params, "|%s", params[0]);
     for (i = 1; i < paramc; i++) {
         strcat(flat_params, "|");
