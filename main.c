@@ -10,9 +10,6 @@ int main (int argc, char **argv) {
 		printf("RPC WARN: Servald not running. Aborting.\n");
 		return -1;
 	}
-    cf_init();
-    cf_load_strict();
-
 
 	// Make sure all required params are set.
 	if (argc < 2) {

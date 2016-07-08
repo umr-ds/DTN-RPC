@@ -6,6 +6,7 @@
 #include "mdp_client.h"
 #include "msp_client.h"
 #include "dataformats.h"
+#include <curl/curl.h>
 
 #define RPC_PKT_DISCOVER 0
 #define RPC_PKT_DISCOVER_ACK 1
