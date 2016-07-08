@@ -5,7 +5,7 @@ localstatedir = ${prefix}/var
 CC = gcc
 
 # Include search paths
-CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include
+CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include -g -O0
 # sysconfdir definition
 CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\"" -DLOCALSTATEDIR="\"$(localstatedir)\""
 # Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.
@@ -23,7 +23,7 @@ CFLAGS += -Wall -Wextra -Werror -ferror-limit=0
 CFLAGS += -DPACKAGE_NAME=\"ServalRPC\" -DPACKAGE_TARNAME=\"ServalRPC\" -DPACKAGE_VERSION=\"0.1\" -DPACKAGE_STRING=\"ServalRPC\ 0.1\" -DHAVE_FUNC_ATTRIBUTE_ALIGNED=1 -DHAVE_FUNC_ATTRIBUTE_UNUSED=1 -DHAVE_FUNC_ATTRIBUTE_USED=1 -DHAVE_VAR_ATTRIBUTE_SECTION_SEG=1 -DHAVE_BCOPY=1 -DHAVE_BZERO=1 -DHAVE_BCMP=1 -DSIZEOF_OFF_T=8 -DHAVE_ARPA_INET_H=1 -DHAVE_POLL_H=1 -DHAVE_NET_IF_H=1 -DHAVE_NETINET_IN_H=1 -DHAVE_SYS_STATVFS_H=1 -DHAVE_SYS_STAT_H=1
 
 # Use the static serval library we compile.
-LDFLAGS= -L. -lservalrpc
+LDFLAGS= -L. -lservalrpc -lcurl
 
 # Use all .c files in this folder and all .o files specified in the obj_files file (stored in $OBJS).
 RPC_SRC=$(wildcard *.c)
