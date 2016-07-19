@@ -265,7 +265,7 @@ int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
             printf("RPC WARN: Execution of \"%s\" went wrong. See errormessages above for more information. Status %i\n", flat_params, WEXITSTATUS(ret_code));
             return -1;
         }
-        printf("RPC DEBUG: RPC DEBUG: Returned result from Binary.\n");
+        printf("RPC DEBUG: Returned result from Binary.\n");
     } else {
         return -1;
     }

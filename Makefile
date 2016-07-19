@@ -5,7 +5,7 @@ localstatedir = ${prefix}/var
 CC = gcc
 
 # Include search paths
-CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include -g -O0
+CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include
 # sysconfdir definition
 CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\"" -DLOCALSTATEDIR="\"$(localstatedir)\""
 # Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.

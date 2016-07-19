@@ -308,10 +308,20 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     memcpy(&payload[4], rpc_name, strlen(rpc_name));
     memcpy(&payload[4 + strlen(rpc_name)], payload_flat_params, strlen(payload_flat_params) + 1);
 
-    char manifest_str[512];
-    sprintf(manifest_str, "@service=RPC\nname=%s\nsender=%s\nrecipient=%s\nfilesize=%zu", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid), payload_size);
+    char tmp_payload_file_name[L_tmpnam];
+    tmpnam(tmp_payload_file_name);
+    FILE *tmp_payload_file = fopen(tmp_payload_file_name, "w+");
+    fwrite(payload, sizeof(payload), sizeof(payload), tmp_payload_file);
+    fclose(tmp_payload_file);
 
-    printf("RPC DEBUG: Manifest:\n%s\n LEN: %zu", manifest_str, strlen(manifest_str));
+    char manifest_str[512];
+    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+
+    char tmp_manifest_file_name[L_tmpnam];
+    tmpnam(tmp_manifest_file_name);
+    FILE *tmp_manifest_file = fopen(tmp_manifest_file_name, "w+");
+    fputs(manifest_str, tmp_manifest_file);
+    fclose(tmp_manifest_file);
 
     CURL *curl_handler;
     CURLcode curl_res;
@@ -336,22 +346,23 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
 
     header = curl_slist_append(header, "Expect:");
-    header = curl_slist_append(header, "Content-Disposition: form-data");
-    header = curl_slist_append(header, "Content-Type: rhizome/manifest; format=text+binarysig");
     curl_easy_setopt(curl_handler, CURLOPT_HTTPHEADER, header);
+
+    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "manifest", CURLFORM_FILE, tmp_manifest_file_name, CURLFORM_CONTENTTYPE, "rhizome/manifest; format=text+binarysig", CURLFORM_END);
+
+    CURLFORMcode c = curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name, CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
+
+    printf("\nRPC DEBUG: #### C (payload) = %d\n", c);
+
     curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
-
-    CURLFORMcode c = curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "manifest", CURLFORM_COPYCONTENTS, manifest_str, CURLFORM_CONTENTHEADER, header, CURLFORM_END);
-
-    printf("\nRPC DEBUG: #### C = %d\n", c);
-
-    // curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_COPYCONTENTS, &payload, CURLFORM_COPYNAME, "filename", CURLFORM_COPYCONTENTS, &payload, CURLFORM_CONTENTHEADER, header, CURLFORM_END);
 
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
         printf("RPC WARN: CURL failed: %s\n", curl_easy_strerror(curl_res));
     }
 
+    remove(tmp_manifest_file_name);
+    remove(tmp_payload_file_name);
     curl_slist_free_all(header);
     curl_easy_cleanup(curl_handler);
 
