@@ -16,7 +16,7 @@ int mdp_fd;
 
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
-int rpc_check_offered (struct rpc_procedure *rp) {
+int rpc_check_offered (struct RPCProcedure *rp) {
     printf("RPC DEBUG: Checking, if %s is offered.\n", rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
@@ -56,10 +56,10 @@ int rpc_check_offered (struct rpc_procedure *rp) {
 }
 
 // Function to parse the received payload.
-struct rpc_procedure rpc_parse_call (const uint8_t *payload, size_t len) {
+struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     printf("RPC DEBUG: Parsing call.\n");
     // Create a new rp struct.
-    struct rpc_procedure rp;
+    struct RPCProcedure rp;
 
     // Parse the parameter count.
     rp.paramc = read_uint16(&payload[2]);
@@ -90,12 +90,13 @@ struct rpc_procedure rpc_parse_call (const uint8_t *payload, size_t len) {
     return rp;
 }
 
+// TODO: REWRITE!
 int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
     // Create new empty manifest and a bundle result struct for keeping track of particular execution results.*/
     rhizome_manifest *m = NULL;
     struct rhizome_bundle_result result = INVALID_RHIZOME_BUNDLE_RESULT;
 
-    // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
+    // Open the Rhizome database, the serval instance dir..
     if (rhizome_opendb() == -1){
         printf("RPC WARN: Could not open rhizome database. Aborting.\n");
         return -1;
@@ -104,11 +105,6 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
         printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
         return -1;
     }
-    if (!(keyring = keyring_open_instance(""))){
-        printf("RPC WARN: Could not open keyring file. Aborting.\n");
-        return -1;
-    }
-    keyring_enter_pin(keyring, "");
 
     // Initialize the manifest.
     if ((m = rhizome_new_manifest()) == NULL){
@@ -217,14 +213,12 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
     int return_code = result.status;
     rhizome_bundle_result_free(&result);
     rhizome_manifest_free(m);
-    keyring_free(keyring);
-    keyring = NULL;
 
     return return_code;
 }
 
 // Execute the procedure
-int rpc_excecute (struct rpc_procedure rp, MSP_SOCKET sock) {
+int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
     printf("RPC DEBUG: Executing %s.\n", rp.name);
     FILE *pipe_fp;
 
@@ -300,8 +294,8 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
         // First make sure, we received a RPC call packet.
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
             printf("RPC DEBUG: Received RPC via MSP.\n");
-            // Parse the payload to the rpc_procedure struct
-            struct rpc_procedure rp = rpc_parse_call(payload, len);
+            // Parse the payload to the RPCProcedure struct
+            struct RPCProcedure rp = rpc_parse_call(payload, len);
 
             // Check, if we offer this procedure.
             if (rpc_check_offered(&rp) == 0) {
@@ -334,11 +328,9 @@ void stopHandler (int signum) {
     running = 1;
 }
 
+// TODO: REWRITE!
 int rpc_listen_rhizome () {
-//    rhizome_bid_t manifest_ids[3];
-//    rhizome_filehash_t file_ids[3];
-
-    // Open the Rhizome database, the serval instance dir, the keyring file and unlock the keyring.
+    // Open the Rhizome database, the serval instance dir..
     if (rhizome_opendb() == -1){
         printf("RPC WARN: Could not open rhizome database. Aborting.\n");
         return -1;
@@ -347,11 +339,6 @@ int rpc_listen_rhizome () {
         printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
         return -1;
     }
-    if (!(keyring = keyring_open_instance(""))){
-        printf("RPC WARN: Could not open keyring file. Aborting.\n");
-        return -1;
-    }
-    keyring_enter_pin(keyring, "");
 
     // Define the cursor, which iterates through the database.
     struct rhizome_list_cursor cursor;
@@ -361,8 +348,6 @@ int rpc_listen_rhizome () {
     cursor.service = "RPC";
     // Now we open the cursor.
     if (rhizome_list_open(&cursor) == -1) {
-        keyring_free(keyring);
-        keyring = NULL;
         return -1;
     }
 
@@ -386,8 +371,8 @@ int rpc_listen_rhizome () {
             while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
                 if (read_uint16(&buffer[0]) == RPC_PKT_CALL) {
                     printf("RPC DEBUG: Received RPC via Rhizome.\n");
-                    // Parse the payload to the rpc_procedure struct
-                    struct rpc_procedure rp = rpc_parse_call(buffer, m->filesize);
+                    // Parse the payload to the RPCProcedure struct
+                    struct RPCProcedure rp = rpc_parse_call(buffer, m->filesize);
                     rp.caller_sid = m->sender;
 
                     // Check, if we offer this procedure.
@@ -415,7 +400,6 @@ int rpc_listen_rhizome () {
         }
     }
     rhizome_list_release(&cursor);
-    keyring_free(keyring);
     return 0;
 }
 

@@ -1,0 +1,51 @@
+#include "rpc.h"
+
+// Function to store results of curl calls (if not free'd manually, all responses are stored consecutively).
+size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *userp) {
+    // realsize is size times number of bytes (nmemb)
+    size_t realsize = size * nmemb;
+    struct CurlResultMemory *mem = (struct CurlResultMemory *) userp;
+
+    // realloc enough memory for the result.
+    mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+    if(mem->memory == NULL) {
+        printf("RPC WARN: Not enough memory for cURL response!\n");
+        return 0;
+    }
+
+    // Copy the response to the reallocated memory.
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    // Set the size to the new size.
+    mem->size += realsize;
+    // Reset the old one.
+    mem->memory[mem->size] = 0;
+    return realsize;
+}
+
+// Init memory where cURL results are written.
+void _curl_init_memory (struct CurlResultMemory *curl_result_memory) {
+    curl_result_memory->memory = malloc(1);
+    curl_result_memory->size = 0;
+}
+
+// Reinit memory where cURL results are written.
+void _curl_reinit_memory (struct CurlResultMemory *curl_result_memory) {
+    free(curl_result_memory->memory);
+    curl_result_memory->memory = malloc(1);
+    curl_result_memory->size = 0;
+}
+
+// Free memory where cURL results were written.
+void _curl_free_memory (struct CurlResultMemory *curl_result_memory) {
+    free(curl_result_memory->memory);
+    curl_result_memory->size = 0;
+}
+
+// Set basic cURL options (URL, HTTP basic authentication, credentials and header (even if it's empty at this point.))
+void _curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header) {
+    curl_easy_setopt(curl_handler, CURLOPT_URL, url);
+    curl_easy_setopt(curl_handler, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_easy_setopt(curl_handler, CURLOPT_USERNAME, "RPC");
+    curl_easy_setopt(curl_handler, CURLOPT_PASSWORD, "SRPC");
+    curl_easy_setopt(curl_handler, CURLOPT_HTTPHEADER, header);
+}

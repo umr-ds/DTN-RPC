@@ -4,6 +4,18 @@
 // since it is not possible to have multiple definitions of the same method, especially multiple main methods.
 char crash_handler_clue[1024] = "no clue";
 
+// Small function to open the keyring.
+void _open_keyring () {
+    keyring = keyring_open_instance("");
+    keyring_enter_pin(keyring, "");
+}
+
+// Small function to close the keyring.
+void _close_keyring () {
+    keyring_free(keyring);
+    keyring = NULL;
+}
+
 int main (int argc, char **argv) {
 	// First, check if servald is running.
 	if (server_pid() == 0) {
@@ -19,6 +31,8 @@ int main (int argc, char **argv) {
 				argv[0], argv[0]);
 		return -1;
 	}
+
+    _open_keyring();
 
 	// This is the server part. We just listen.
 	if (strncmp(argv[1], "listen", strlen("listen")) == 0) {
@@ -57,4 +71,5 @@ int main (int argc, char **argv) {
 		printf("RPC WARN: Something went wrong. No result.\n");
 		return -1;
 	}
+    _close_keyring();
 }

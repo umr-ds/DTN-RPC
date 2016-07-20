@@ -2,96 +2,6 @@
 
 int received = 0;
 
-struct data {
-  char trace_ascii; /* 1 or 0 */
-};
-
-static
-void dump_curl(const char *text, FILE *stream, unsigned char *ptr, size_t size, char nohex)
-{
-  size_t i;
-  size_t c;
-
-  unsigned int width=0x10;
-
-  if(nohex)
-    /* without the hex output, we can fit more on screen */
-    width = 0x40;
-
-  fprintf(stream, "%s, %10.10ld bytes (0x%8.8lx)\n",
-          text, (long)size, (long)size);
-
-  for(i=0; i<size; i+= width) {
-
-    fprintf(stream, "%4.4lx: ", (long)i);
-
-    if(!nohex) {
-      /* hex not disabled, show it */
-      for(c = 0; c < width; c++)
-        if(i+c < size)
-          fprintf(stream, "%02x ", ptr[i+c]);
-        else
-          fputs("   ", stream);
-    }
-
-    for(c = 0; (c < width) && (i+c < size); c++) {
-      /* check for 0D0A; if found, skip past and start a new line of output */
-      if(nohex && (i+c+1 < size) && ptr[i+c]==0x0D && ptr[i+c+1]==0x0A) {
-        i+=(c+2-width);
-        break;
-      }
-      fprintf(stream, "%c",
-              (ptr[i+c]>=0x20) && (ptr[i+c]<0x80)?ptr[i+c]:'.');
-      /* check again for 0D0A, to avoid an extra \n if it's at width */
-      if(nohex && (i+c+2 < size) && ptr[i+c+1]==0x0D && ptr[i+c+2]==0x0A) {
-        i+=(c+3-width);
-        break;
-      }
-    }
-    fputc('\n', stream); /* newline */
-  }
-  fflush(stream);
-}
-
-static
-int my_trace(CURL *handle, curl_infotype type,
-             char *data, size_t size,
-             void *userp)
-{
-  struct data *config = (struct data *)userp;
-  const char *text;
-  (void)handle; /* prevent compiler warning */
-
-  switch (type) {
-  case CURLINFO_TEXT:
-    fprintf(stderr, "== Info: %s", data);
-  default: /* in case a new one is introduced to shock us */
-    return 0;
-
-  case CURLINFO_HEADER_OUT:
-    text = "=> Send header";
-    break;
-  case CURLINFO_DATA_OUT:
-    text = "=> Send data";
-    break;
-  case CURLINFO_SSL_DATA_OUT:
-    text = "=> Send SSL data";
-    break;
-  case CURLINFO_HEADER_IN:
-    text = "<= Recv header";
-    break;
-  case CURLINFO_DATA_IN:
-    text = "<= Recv data";
-    break;
-  case CURLINFO_SSL_DATA_IN:
-    text = "<= Recv SSL data";
-    break;
-  }
-
-  dump_curl(text, stderr, (unsigned char *)data, size, config->trace_ascii);
-  return 0;
-}
-
 // NOT NEEDED SO FAR! WILL BE NEEDED FOR BROADCASTS.
 //int rpc_discover (sid_t server_sid, char *rpc_name) {
 //    int mdp_sockfd;
@@ -213,25 +123,10 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     // Set the handler to handle incoming packets.
     msp_set_handler(sock, client_handler, NULL);
 
-    // Prepare 2D array of params to 1D for serialization. Use '|' as a seperator.
-    char *flat_params  = malloc(sizeof(char *));
-    sprintf(flat_params, "|%s", params[0]);
-    int i;
-    for (i = 1; i < paramc; i++) {
-        strcat(flat_params, "|");
-        strncat(flat_params, params[i], strlen(params[i]));
-    }
+    char *flat_params = _rpc_flatten_params(paramc, params);
 
-    // Create the payload containing ...
     uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params)];
-    // ... the packet type, ...
-    write_uint16(&payload[0], RPC_PKT_CALL);
-    // ... number of parameters, ...
-    write_uint16(&payload[2], (uint16_t) paramc);
-    // ... the rpc name ...
-    memcpy(&payload[4], rpc_name, strlen(rpc_name));
-    // ... and all params.
-    memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params));
+    _rpc_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
     printf("RPC DEBUG: Calling %s for %s.\n", alloca_tohex_sid_t(sid), rpc_name);
 
@@ -269,170 +164,176 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     return received;
 }
 
-char* rpc_flatten_params (const int paramc, const char **params) {
-    // Prepare 2D array of params to 1D for serialization. Use '|' as a seperator.
-    size_t params_size = 0;
-    int i;
-    for (i = 0; i < paramc; i++){
-        params_size = params_size + strlen(params[i]);
-    }
-
-    char *flat_params  = malloc(params_size + paramc);
-    sprintf(flat_params, "|%s", params[0]);
-    for (i = 1; i < paramc; i++) {
-        strcat(flat_params, "|");
-        strncat(flat_params, params[i], strlen(params[i]));
-    }
-
-    return flat_params;
-}
-
 int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
     int return_code = -1;
 
-    struct data config;
-    config.trace_ascii = 1;
+    // Flatten the params.
+    char *payload_flat_params = _rpc_flatten_params(paramc, params);
 
-    if (!(keyring = keyring_open_instance(""))){
-        printf("RPC WARN: Could not open keyring file. Aborting.\n");
-        return -1;
-    }
-    keyring_enter_pin(keyring, "");
-
-    char *payload_flat_params = rpc_flatten_params(paramc, params);
-
-    size_t payload_size = 2 + 2 + strlen(rpc_name) + strlen(payload_flat_params);
-    uint8_t payload[payload_size];
-    write_uint16(&payload[0], RPC_PKT_CALL);
-    write_uint16(&payload[2], (uint16_t) paramc);
-    memcpy(&payload[4], rpc_name, strlen(rpc_name));
-    memcpy(&payload[4 + strlen(rpc_name)], payload_flat_params, strlen(payload_flat_params) + 1);
-
+    // Construct the payload and write it to the payload file.
+    // |------------------------|-------------------|----------------------------|--------------------------|
+    // |-- 2 byte packet type --|-- 2 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
+    // |------------------------|-------------------|----------------------------|--------------------------|
+    uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(payload_flat_params)];
+    _rpc_prepare_call_payload(payload, paramc, rpc_name, payload_flat_params);
     char tmp_payload_file_name[L_tmpnam];
-    tmpnam(tmp_payload_file_name);
-    FILE *tmp_payload_file = fopen(tmp_payload_file_name, "w+");
-    fwrite(payload, sizeof(payload), sizeof(payload), tmp_payload_file);
-    fclose(tmp_payload_file);
+    _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
-    char manifest_str[512];
+    // Construct the manifest and write it to the manifest file.
+    int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
+    char manifest_str[manifest_size];
     sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
-
     char tmp_manifest_file_name[L_tmpnam];
-    tmpnam(tmp_manifest_file_name);
-    FILE *tmp_manifest_file = fopen(tmp_manifest_file_name, "w+");
-    fputs(manifest_str, tmp_manifest_file);
-    fclose(tmp_manifest_file);
+    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 
-    CURL *curl_handler;
+    // Init the cURL stuff.
+    CURL *curl_handler = NULL;
     CURLcode curl_res;
+    struct CurlResultMemory curl_result_memory;
+    _curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
-        printf("RPC WARN: Failed to create curl handle in fetch_session. Aborting.");
-        return -1;
+        printf("RPC WARN: Failed to create curl handle in post. Aborting.");
+        return_code = -1;
+        goto out;
     }
 
-    curl_easy_setopt(curl_handler, CURLOPT_DEBUGFUNCTION, my_trace);
-    curl_easy_setopt(curl_handler, CURLOPT_DEBUGDATA, &config);
-    curl_easy_setopt(curl_handler, CURLOPT_VERBOSE, 1L);
-
+    // Declare all needed headers forms and URLs.
     struct curl_slist *header = NULL;
     struct curl_httppost *formpost = NULL;
     struct curl_httppost *lastptr = NULL;
-    char *url = "http://localhost:4110/restful/rhizome/insert";
+    char *url_insert = "http://localhost:4110/restful/rhizome/insert";
 
-    curl_easy_setopt(curl_handler, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handler, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-    curl_easy_setopt(curl_handler, CURLOPT_USERNAME, "RPC");
-    curl_easy_setopt(curl_handler, CURLOPT_PASSWORD, "SRPC");
+    // Set basic cURL options (see function).
+    _curl_set_basic_opt(url_insert, curl_handler, header);
 
-
-    header = curl_slist_append(header, "Expect:");
-    curl_easy_setopt(curl_handler, CURLOPT_HTTPHEADER, header);
-
+    // Add the manifest form.
     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "manifest", CURLFORM_FILE, tmp_manifest_file_name, CURLFORM_CONTENTTYPE, "rhizome/manifest; format=text+binarysig", CURLFORM_END);
 
-    CURLFORMcode c = curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name, CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
+    // Add the payload form.
+    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name, CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
 
-    printf("\nRPC DEBUG: #### C (payload) = %d\n", c);
-
+    // Add the forms to the request.
     curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
 
+    // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        printf("RPC WARN: CURL failed: %s\n", curl_easy_strerror(curl_res));
+        printf("RPC WARN: CURL failed (post): %s. Aborting.\n", curl_easy_strerror(curl_res));
+        return_code = -1;
+        goto out_curl;
     }
 
-    remove(tmp_manifest_file_name);
-    remove(tmp_payload_file_name);
-    curl_slist_free_all(header);
-    curl_easy_cleanup(curl_handler);
+    /* LISTENER PART (waiting for response) */
+    // Reinit to forget about the post part above.
+    if ((curl_handler = curl_easy_init()) == NULL) {
+        printf("RPC WARN: Failed to create curl handle in get. Aborting.");
+        return_code = -1;
+        goto out_curl;
+    }
 
-    return return_code = -1;
-    //
-    //
-    // // Define the cursor, which iterates through the database.
-    // struct rhizome_list_cursor cursor;
-    // // For some reason, we need to zero out the memory, where the pointer to the cursor points to.
-    // bzero(&cursor, sizeof(cursor));
-    // // We set the cursor service to RPC, to skip MeshMS and files.
-    // cursor.service = "RPC";
-    // // Now we open the cursor.
-    // if (rhizome_list_open(&cursor) == -1) {
-    //     keyring_free(keyring);
-    //     keyring = NULL;
-    //     return -1;
-    // }
-    //
-    // time_t timeout = time(NULL);
-    // while (received == 0) {
-    //     // We only wait for 3 seconds (while developing. Lateron definitely longer).
-    //     if ((double) (time(NULL) - timeout) >= 3.0) {
-    //         break;
-    //     }
-    //
-    //     // Define a rhizome_read struct, where the reading of the content happens.
-    //     struct rhizome_read read_state;
-    //     // Again, we have to zero it out.
-    //     bzero(&read_state, sizeof(read_state));
-    //     printf("RPC DEBUG: Waiting...\n");
-    //
-    //     // Iterate through the rhizome store.
-    //     while (rhizome_list_next(&cursor) == 1) {
-    //         // Get the current manifest.
-    //         rhizome_manifest *m = cursor.manifest;
-    //
-    //         // Open the file and prepare to read it.
-    //         enum rhizome_payload_status status = rhizome_open_decrypt_read(m, &read_state);
-    //         // If the file with the given hash is in the rhizome store, we read is.
-    //         if (status == RHIZOME_PAYLOAD_STATUS_STORED) {
-    //             // Create a buffer with the size if the file, where the content get written to.
-    //             unsigned char buffer[m->filesize];
-    //             // Read the content of the file, while its not empty.
-    //             while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
-    //                 if (read_uint16(&buffer[0]) == RPC_PKT_CALL_ACK){
-    //                     printf("RPC DEBUG: Received ACK via Rhizome. Waiting.\n");
-    //                     timeout = time(NULL);
-    //                 } else if (read_uint16(&buffer[0]) == RPC_PKT_CALL_RESPONSE) {
-    //                     printf("RPC DEBUG: Received result.\n");
-    //                     memcpy(rpc_result, &buffer[2], m->filesize - 2);
-    //                     return_code = 2;
-    //                     received = 1;
-    //                     break;
-    //                 }
-    //             }
-    //             if (return_code == 2) {
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     sleep(1);
-    // }
-    //
-    // // Now we can clean up and free everything.
-    // rhizome_list_release(&cursor);
-    // keyring_free(keyring);
-    // keyring = NULL;
-    //
-    // return return_code;
+    // We only wait for 3 seconds (while developing. Lateron definitely longer).
+    time_t timeout = time(NULL);
+    int waittime = 3;
+    while (received == 0) {
+        if ((double) (time(NULL) - timeout) >= waittime) {
+            break;
+        }
+
+        // Remove everything from the cURL memory.
+        _curl_reinit_memory(&curl_result_memory);
+
+        header = NULL;
+        char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
+
+        // Again, set basic options, ...
+        _curl_set_basic_opt(url_get, curl_handler, header);
+        // ... but this time add a callback function, where results from the cURL call are handled.
+        curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+        curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
+
+        // Get the bundlelist.
+        curl_res = curl_easy_perform(curl_handler);
+        if (curl_res != CURLE_OK) {
+            printf("RPC WARN: CURL failed (get): %s. Aborting.\n", curl_easy_strerror(curl_res));
+            return_code = -1;
+            goto out_curl;
+        }
+
+        // Write the bundlelist to a string for manipulations.
+        char json_string[(size_t)curl_result_memory.size - 1];
+        memcpy(json_string, curl_result_memory.memory, (size_t)curl_result_memory.size - 1);
+
+        // Parse JSON:
+        // Init, ...
+        cJSON *incoming_json = cJSON_Parse(json_string);
+        // ... get the 'rows' entry, ...
+        cJSON *rows = cJSON_GetObjectItem(incoming_json, "rows");
+        // ... consider only the recent file, ...
+        cJSON *recent_file = cJSON_GetArrayItem(rows, 0);
+        // ... get the 'service', ...
+        char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+        // ... 'fromhere' indicator and ...
+        int fromhere = cJSON_GetArrayItem(recent_file, 8)->valueint;
+        // ... the recipient from the recent file.
+        char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
+
+        // Check, if this file is an RPC packet and if it is not from but for the client.
+        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
+        int file_not_from_here = fromhere == 0;
+        int not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+
+        if (service_is_rpc && file_not_from_here && not_my_file) {
+            // Free everyhing, again.
+            _curl_reinit_memory(&curl_result_memory);
+            curl_slist_free_all(header);
+            header = NULL;
+
+            // Get the bundle ID of the file which should be decrypted.
+            char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
+            char url_decrypt[117];
+            sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
+
+            _curl_set_basic_opt(url_decrypt, curl_handler, header);
+
+            // Decrypt the file.
+            curl_res = curl_easy_perform(curl_handler);
+            if (curl_res != CURLE_OK) {
+                printf("RPC WARN: CURL failed (decrypt): %s\n", curl_easy_strerror(curl_res));
+                return_code = -1;
+                goto out_curl;
+            }
+
+            // Copy the payload for manipulations.
+            size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
+            uint8_t recv_payload[filesize];
+            memcpy(recv_payload, curl_result_memory.memory, filesize);
+
+            if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK){
+                // If we got an ACK packet, we wait (for now) 5 more seconds.
+                printf("RPC DEBUG: Received ACK via Rhizome. Waiting.\n");
+                waittime = 5;
+            } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
+                // We got our result!
+                printf("RPC DEBUG: Received result.\n");
+                memcpy(rpc_result, &recv_payload[2], filesize - 2);
+                return_code = 0;
+                received = 1;
+                break;
+            }
+        }
+        sleep(1);
+    }
+
+    // Clean up.
+    out_curl:
+        curl_slist_free_all(header);
+        curl_easy_cleanup(curl_handler);
+    out:
+        _curl_free_memory(&curl_result_memory);
+        remove(tmp_manifest_file_name);
+        remove(tmp_payload_file_name);
+
+        return return_code;
 }
 
 // General call function. For transparent usage.
@@ -442,7 +343,7 @@ int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, co
         return -1;
     } else {
         // Call the rpc directly over msp.
-        int call_return = call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);//rpc_call_msp(server_sid, rpc_name, paramc, params);
+        int call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);//rpc_call_msp(server_sid, rpc_name, paramc, params);
 
         if (call_return == -1) {
             printf("RPC WARN: Server not available via MSP. Trying Rhizome.\n");
