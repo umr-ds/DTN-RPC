@@ -17,7 +17,7 @@ int mdp_fd;
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
 int rpc_check_offered (struct RPCProcedure *rp) {
-    printf("RPC DEBUG: Checking, if %s is offered.\n", rp->name);
+    printf("RPC DEBUG: Checking, if \"%s\" is offered.\n", rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
@@ -66,8 +66,8 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
 
     // Cast the payload starting at byte 5 to string.
     // The first 4 bytes are for packet type and param count.
-    char ch_payload[len - 4];// = (char*) &payload[4];
-    memcpy(ch_payload, &payload[4], len - 3);
+    char ch_payload[len - 4];
+    memcpy(ch_payload, &payload[4], len - 4);
 
     // Split the payload at the first '|'
     char *tok = strtok(ch_payload, "|");
@@ -90,136 +90,69 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     return rp;
 }
 
-// TODO: REWRITE!
+// Send the result via Rhizome
 int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
-    // Create new empty manifest and a bundle result struct for keeping track of particular execution results.*/
-    rhizome_manifest *m = NULL;
-    struct rhizome_bundle_result result = INVALID_RHIZOME_BUNDLE_RESULT;
+    int return_code = 1;
 
-    // Open the Rhizome database, the serval instance dir..
-    if (rhizome_opendb() == -1){
-        printf("RPC WARN: Could not open rhizome database. Aborting.\n");
-        return -1;
-    }
-    if (create_serval_instance_dir() == -1){
-        printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
-        return -1;
-    }
+    // Construct the manifest and write it to the manifest file.
+    int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
+    char manifest_str[manifest_size];
+    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+    char tmp_manifest_file_name[L_tmpnam];
+    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 
-    // Initialize the manifest.
-    if ((m = rhizome_new_manifest()) == NULL){
-        printf("RPC WARN: Could not create a new manifest. Aborting.\n");
-        return -1;
-    }
+    // Write the payload to the payload file.
+    char tmp_payload_file_name[L_tmpnam];
+    _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
-    rhizome_manifest *mout = NULL;
-    rhizome_manifest_set_service(m, "RPC");
-    rhizome_manifest_set_name(m, rpc_name);
-    rhizome_manifest_set_sender(m, &my_subscriber->sid);
-    rhizome_manifest_set_recipient(m, &sid);
-
-    char tmp_file_name[L_tmpnam];
-
-    tmpnam(tmp_file_name);
-
-    FILE *rpc_file = fopen(tmp_file_name, "w+");
-
-    fwrite(payload, sizeof(payload), sizeof(payload), rpc_file);
-
-    // Close the file.
-    fclose(rpc_file);
-
-    result = rhizome_manifest_add_file(0, m, &mout, NULL, NULL, &my_subscriber->sid, tmp_file_name, 0, NULL);
-
-
-    if (result.status != RHIZOME_BUNDLE_STATUS_NEW) {
-        printf("RPC WARN: RPC is not new. Aborting.\n");
-        return -1;
+    // Init the cURL stuff.
+    CURL *curl_handler = NULL;
+    CURLcode curl_res;
+    struct CurlResultMemory curl_result_memory;
+    _curl_init_memory(&curl_result_memory);
+    if ((curl_handler = curl_easy_init()) == NULL) {
+        printf("RPC WARN: Failed to create curl handle in post. Aborting.");
+        return_code = -1;
+        goto clean_rhizome_server_response;
     }
 
-    // Make sure, m is the same as mout, since the final manifest was written to mout in rhizome_manifest_add_file.
-    // We now can throw away mout.
-    if (mout != m) {
-        rhizome_manifest_free(m);
-        m = mout;
-    }
-    mout = NULL;
+    // Declare all needed headers forms and URLs.
+    struct curl_slist *header = NULL;
+    struct curl_httppost *formpost = NULL;
+    struct curl_httppost *lastptr = NULL;
+    char *url_insert = "http://localhost:4110/restful/rhizome/insert";
 
-    // Create a playload_status variable for the status of the payload, since the payload was not imported yet.
-    enum rhizome_payload_status pstatus;
+    // Set basic cURL options (see function).
+    _curl_set_basic_opt(url_insert, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
-    // Check, if the payload is new in terms of this payload is not in the rhizome store, yet.
-    pstatus = rhizome_stat_payload_file(m, tmp_file_name);
-    // If the payload is new, ...
-    if (pstatus == RHIZOME_PAYLOAD_STATUS_NEW) {
-        // store the payload.
-        pstatus = rhizome_store_payload_file(m, tmp_file_name);
-    }
+    // Add the manifest and payload form and add the form to the cURL request.
+    _curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
-    // Reset the result struct.
-    rhizome_bundle_result_free(&result);
-    // Per default, consider the payload is not valid.
-    int pstatus_valid = 0;
-    // Check for errors. If any of the below cases matches, the payload is valid, even, if it is an error.
-    // It is only not valid, if one of the below cases does not match. I can't imagine a case, where this can happen, but ok.
-    switch (pstatus) {
-        case RHIZOME_PAYLOAD_STATUS_EMPTY:
-        case RHIZOME_PAYLOAD_STATUS_STORED:
-        case RHIZOME_PAYLOAD_STATUS_NEW:
-            pstatus_valid = 1;
-            result.status = RHIZOME_BUNDLE_STATUS_NEW;
-            break;
-        case RHIZOME_PAYLOAD_STATUS_TOO_BIG:
-        case RHIZOME_PAYLOAD_STATUS_EVICTED:
-            pstatus_valid = 1;
-            result.status = RHIZOME_BUNDLE_STATUS_NO_ROOM;
-            printf("RPC INFO: Insufficient space to store payload.\n");
-            break;
-        case RHIZOME_PAYLOAD_STATUS_ERROR:
-            pstatus_valid = 1;
-            result.status = RHIZOME_BUNDLE_STATUS_ERROR;
-            break;
-        case RHIZOME_PAYLOAD_STATUS_WRONG_SIZE:
-        case RHIZOME_PAYLOAD_STATUS_WRONG_HASH:
-            pstatus_valid = 1;
-            result.status = RHIZOME_BUNDLE_STATUS_INCONSISTENT;
-            break;
-        case RHIZOME_PAYLOAD_STATUS_CRYPTO_FAIL:
-            pstatus_valid = 1;
-            result.status = RHIZOME_BUNDLE_STATUS_READONLY;
-            break;
-    }
-    if (!pstatus_valid)
-        FATALF("pstatus = %d", pstatus);
-
-    // If the status indicates, that the bundle is new, check if the manifest is valid and not malformed.
-    if (result.status == RHIZOME_BUNDLE_STATUS_NEW) {
-        if (!rhizome_manifest_validate(m) || m->malformed)
-            result.status = RHIZOME_BUNDLE_STATUS_INVALID;
-        else {
-            // If everything seems to be okay, we can finalize the manifest. At this point, the RPC is written do disk.
-            rhizome_bundle_result_free(&result);
-            result = rhizome_manifest_finalise(m, &mout, 0);
-            if (mout && mout != m && !rhizome_manifest_validate(mout)) {
-                WHYF("Stored manifest id=%s is invalid -- overwriting", alloca_tohex_rhizome_bid_t(mout->cryptoSignPublic));
-                rhizome_bundle_result_free(&result);
-                result = rhizome_bundle_result(RHIZOME_BUNDLE_STATUS_NEW);
-            }
-        }
+    // Perfom request, which means insert the RPC file to the store.
+    curl_res = curl_easy_perform(curl_handler);
+    if (curl_res != CURLE_OK) {
+        printf("RPC WARN: CURL failed (post): %s. Aborting.\n", curl_easy_strerror(curl_res));
+        return_code = -1;
+        goto clean_rhizome_server_response_all;
     }
 
-    // Now we can clean up and free everything.
-    unlink(tmp_file_name);
-    int return_code = result.status;
-    rhizome_bundle_result_free(&result);
-    rhizome_manifest_free(m);
+    // Clean up.
+    clean_rhizome_server_response_all:
+        curl_slist_free_all(header);
+        curl_easy_cleanup(curl_handler);
+    clean_rhizome_server_response:
+        _curl_free_memory(&curl_result_memory);
+        remove(tmp_manifest_file_name);
+        remove(tmp_payload_file_name);
 
     return return_code;
 }
 
 // Execute the procedure
 int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
-    printf("RPC DEBUG: Executing %s.\n", rp.name);
+    printf("RPC DEBUG: Executing \"%s\".\n", rp.name);
     FILE *pipe_fp;
 
     // Compile the rpc name and the path of the binary to one string.
@@ -228,18 +161,13 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
 
     // Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
     // we have to compile the bin with all parameters from the struct.
-    char *flat_params = malloc(strlen(bin) + sizeof(rp.params) / sizeof(rp.params[0]) + rp.paramc - 1);
-    // This is the first part, containing bin and the first parameter, since there has to be at least one parameter.
-    sprintf(flat_params, "%s %s", bin, rp.params[0]);
-    // Now, we don't know, how many parameters will follow, so we have to do the remaining parameters programmatically in a loop.
-    int i;
-    for (i = 1; i < rp.paramc; i++) {
-        strcat(flat_params, " ");
-        strncat(flat_params, rp.params[i], strlen(rp.params[i]));
-    }
+    char *flat_params = _rpc_flatten_params(rp.paramc, (const char **) rp.params, " ");
+
+    char cmd[strlen(bin) + strlen(flat_params)];
+    sprintf(cmd, "%s%s", bin, flat_params);
 
     // Open the pipe.
-    if ((pipe_fp = popen(flat_params, "r")) == NULL) {
+    if ((pipe_fp = popen(cmd, "r")) == NULL) {
         printf("RPC WARN: Could not open the pipe. Aborting.\n");
         return -1;
     }
@@ -328,79 +256,131 @@ void stopHandler (int signum) {
     running = 1;
 }
 
-// TODO: REWRITE!
 int rpc_listen_rhizome () {
-    // Open the Rhizome database, the serval instance dir..
-    if (rhizome_opendb() == -1){
-        printf("RPC WARN: Could not open rhizome database. Aborting.\n");
-        return -1;
-    }
-    if (create_serval_instance_dir() == -1){
-        printf("RPC WARN: Could not open serval instance directory. Aborting.\n");
-        return -1;
-    }
+    int return_code = 1;
 
-    // Define the cursor, which iterates through the database.
-    struct rhizome_list_cursor cursor;
-    // For some reason, we need to zero out the memory, where the pointer to the cursor points to.
-    bzero(&cursor, sizeof(cursor));
-    // We set the cursor service to RPC, to skip MeshMS and files.
-    cursor.service = "RPC";
-    // Now we open the cursor.
-    if (rhizome_list_open(&cursor) == -1) {
-        return -1;
+    // GET RECENT FILE
+    CURL *curl_handler = NULL;
+    CURLcode curl_res;
+    struct CurlResultMemory curl_result_memory;
+    _curl_init_memory(&curl_result_memory);
+    if ((curl_handler = curl_easy_init()) == NULL) {
+        printf("RPC WARN: Failed to create curl handle in post. Aborting.");
+        return_code = -1;
+        goto clean_rhizome_server_listener;
     }
 
-    // Define a rhizome_read struct, where the reading of the content happens.
-    struct rhizome_read read_state;
-    // Again, we have to zero it out.
-    bzero(&read_state, sizeof(read_state));
+    struct curl_slist *header = NULL;
+    char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
 
-    // Iterate through the rhizome store.
-    while (rhizome_list_next(&cursor) == 1) {
-        // Get the current manifest.
-        rhizome_manifest *m = cursor.manifest;
+    // Again, set basic options, ...
+    _curl_set_basic_opt(url_get, curl_handler, header);
+    // ... but this time add a callback function, where results from the cURL call are handled.
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
-        // Open the file and prepare to read it.
-        enum rhizome_payload_status status = rhizome_open_decrypt_read(m, &read_state);
-        // If the file with the given hash is in the rhizome store, we read is.
-        if (status == RHIZOME_PAYLOAD_STATUS_STORED) {
-            // Create a buffer with the size if the file, where the content get written to.
-            unsigned char buffer[m->filesize];
-            // Read the content of the file, while its not empty.
-            while((rhizome_read(&read_state, buffer, sizeof(buffer))) > 0){
-                if (read_uint16(&buffer[0]) == RPC_PKT_CALL) {
-                    printf("RPC DEBUG: Received RPC via Rhizome.\n");
-                    // Parse the payload to the RPCProcedure struct
-                    struct RPCProcedure rp = rpc_parse_call(buffer, m->filesize);
-                    rp.caller_sid = m->sender;
+    // Get the bundlelist.
+    curl_res = curl_easy_perform(curl_handler);
+    if (curl_res != CURLE_OK) {
+        printf("RPC WARN: CURL failed (get): %s. Aborting.\n", curl_easy_strerror(curl_res));
+        return_code = -1;
+        goto clean_rhizome_server_listener_all;
+    }
 
-                    // Check, if we offer this procedure.
-                    if (rpc_check_offered(&rp) == 0) {
-                        printf("RPC DEBUG: Offering desired RPC. Sending ACK via Rhizome.\n");
-                        // Compile and send ACK packet.
+    {
+        // Write the bundlelist to a string for manipulations.
+        char json_string[(size_t)curl_result_memory.size - 1];
+        memcpy(json_string, curl_result_memory.memory, (size_t)curl_result_memory.size - 1);
 
-                        uint8_t payload[2];
-                        write_uint16(&payload[0], RPC_PKT_CALL_ACK);
+        // Parse JSON:
+        // Init, ...
+        cJSON *incoming_json = cJSON_Parse(json_string);
+        // ... get the 'rows' entry, ...
+        cJSON *rows = cJSON_GetObjectItem(incoming_json, "rows");
+        // (if there are no files in the store, abort)
+        if (cJSON_GetArraySize(rows) <= 0) {
+            return_code = -1;
+            goto clean_rhizome_server_listener_all;
+        }
+        // ... consider only the recent file, ...
+        cJSON *recent_file = cJSON_GetArrayItem(rows, 0);
+        // ... get the 'service', ...
+        char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+        // ... the sender from the recent file.
+        char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
+        // ... the recipient from the recent file.
+        char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
-                        rpc_send_rhizome(rp.caller_sid, rp.name, payload);
+        // Check, if this file is an RPC packet and if it is not from but for the client.
+        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
+        int not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
 
-                        // Try to execute the procedure.
-                        if (rpc_excecute(rp, MSP_SOCKET_NULL) == 0) {
-                            printf("RPC DEBUG: RPC execution was successful.\n");
-                        } else {
-                            status = 2;
-                        }
+        // DECRYPT IT
+        if (service_is_rpc  && not_my_file) {
+            // Free everyhing, again.
+            _curl_reinit_memory(&curl_result_memory);
+            curl_slist_free_all(header);
+            header = NULL;
+
+            // Get the bundle ID of the file which should be decrypted.
+            char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
+            char url_decrypt[117];
+            sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
+
+            _curl_set_basic_opt(url_decrypt, curl_handler, header);
+
+            // Decrypt the file.
+            curl_res = curl_easy_perform(curl_handler);
+            if (curl_res != CURLE_OK) {
+                printf("RPC WARN: CURL failed (decrypt): %s\n", curl_easy_strerror(curl_res));
+                return_code = -1;
+                goto clean_rhizome_server_listener_all;
+            }
+
+            // Copy the payload for manipulations.
+            size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
+            uint8_t recv_payload[filesize];
+            memcpy(recv_payload, curl_result_memory.memory, filesize);
+
+            if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL) {
+                printf("RPC DEBUG: Received RPC via Rhizome.\n");
+                // Parse the payload to the RPCProcedure struct
+                struct RPCProcedure rp = rpc_parse_call(recv_payload, filesize);
+        		if (str_to_sid_t(&rp.caller_sid, sender) == -1){
+        			printf("RPC WARN: str_to_sid_t() failed");
+                    return_code = -1;
+                    goto clean_rhizome_server_listener_all;
+        		}
+
+                // Check, if we offer this procedure.
+                if (rpc_check_offered(&rp) == 0) {
+                    printf("RPC DEBUG: Offering desired RPC. Sending ACK via Rhizome.\n");
+
+                    // Compile and send ACK packet.
+                    uint8_t payload[2];
+                    write_uint16(&payload[0], RPC_PKT_CALL_ACK);
+                    rpc_send_rhizome(rp.caller_sid, rp.name, payload);
+
+                    // Try to execute the procedure.
+                    if (rpc_excecute(rp, MSP_SOCKET_NULL) == 0) {
+                        printf("RPC DEBUG: RPC execution was successful.\n");
                     } else {
-                        printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
-                        status = 1;
+                        status = 2;
                     }
+                } else {
+                    printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
+                    status = 1;
                 }
             }
         }
     }
-    rhizome_list_release(&cursor);
-    return 0;
+    clean_rhizome_server_listener_all:
+        curl_slist_free_all(header);
+        curl_easy_cleanup(curl_handler);
+    clean_rhizome_server_listener:
+        _curl_free_memory(&curl_result_memory);
+
+    return return_code;
 }
 
 int rpc_listen () {

@@ -49,3 +49,15 @@ void _curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *head
     curl_easy_setopt(curl_handler, CURLOPT_PASSWORD, "SRPC");
     curl_easy_setopt(curl_handler, CURLOPT_HTTPHEADER, header);
 }
+
+// Add the manifest and payload form and add the form to the cURL request.
+void _curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr) {
+    // Add the manifest form.
+    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "manifest", CURLFORM_FILE, tmp_manifest_file_name, CURLFORM_CONTENTTYPE, "rhizome/manifest; format=text+binarysig", CURLFORM_END);
+
+    // Add the payload form.
+    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name, CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
+
+    // Add the forms to the request.
+    curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
+}
