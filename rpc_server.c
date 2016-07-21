@@ -4,12 +4,6 @@
 #define SERVAL_FOLDER "/serval/"
 #define BIN_FOLDER "/serval/rpc_bin/"
 
-// This var is to have some global server status to handle RPCs in an appropriate way.
-// 0: everything okay.
-// 1: RPC not offered.
-// 2: Could not execute RPC.
-int status = 0;
-
 int running = 0;
 
 int mdp_fd;
@@ -17,7 +11,7 @@ int mdp_fd;
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
 int rpc_check_offered (struct RPCProcedure *rp) {
-    printf("RPC DEBUG: Checking, if \"%s\" is offered.\n", rp->name);
+    printf(RPC_INFO "Checking, if \"%s\" is offered.\n" RPC_RESET, rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
@@ -57,7 +51,7 @@ int rpc_check_offered (struct RPCProcedure *rp) {
 
 // Function to parse the received payload.
 struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
-    printf("RPC DEBUG: Parsing call.\n");
+    printf(RPC_INFO "Parsing call.\n" RPC_RESET);
     // Create a new rp struct.
     struct RPCProcedure rp;
 
@@ -111,7 +105,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
     struct CurlResultMemory curl_result_memory;
     _curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
-        printf("RPC WARN: Failed to create curl handle in post. Aborting.");
+        printf(RPC_FATAL "Failed to create curl handle in post. Aborting." RPC_RESET);
         return_code = -1;
         goto clean_rhizome_server_response;
     }
@@ -133,7 +127,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        printf("RPC WARN: CURL failed (post): %s. Aborting.\n", curl_easy_strerror(curl_res));
+        printf(RPC_FATAL "CURL failed (post): %s. Aborting.\n" RPC_RESET, curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_response_all;
     }
@@ -152,7 +146,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 
 // Execute the procedure
 int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
-    printf("RPC DEBUG: Executing \"%s\".\n", rp.name);
+    printf(RPC_INFO "Executing \"%s\".\n" RPC_RESET, rp.name);
     FILE *pipe_fp;
 
     // Compile the rpc name and the path of the binary to one string.
@@ -168,7 +162,7 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
 
     // Open the pipe.
     if ((pipe_fp = popen(cmd, "r")) == NULL) {
-        printf("RPC WARN: Could not open the pipe. Aborting.\n");
+        printf(RPC_WARN "Could not open the pipe. Aborting.\n" RPC_RESET);
         return -1;
     }
 
@@ -176,7 +170,7 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
     uint8_t payload[2 + 127 + 1];
     write_uint16(&payload[0], RPC_PKT_CALL_RESPONSE);
 
-    // If the pip is open ...
+    // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
         fgets((char *)&payload[2], 127, pipe_fp);
@@ -184,21 +178,21 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {
-            printf("RPC WARN: Execution of \"%s\" went wrong. See errormessages above for more information. Status %i\n", flat_params, WEXITSTATUS(ret_code));
+            printf(RPC_FATAL "Execution of \"%s\" went wrong. See errormessages above for more information. Status %i\n" RPC_RESET, flat_params, WEXITSTATUS(ret_code));
             return -1;
         }
-        printf("RPC DEBUG: Returned result from Binary.\n");
+        printf(RPC_INFO "Returned result from Binary.\n" RPC_RESET);
     } else {
         return -1;
     }
 
     // If the connection is still alive, send the result back.
     if (!msp_socket_is_null(sock) && msp_socket_is_data(sock) == 1) {
-        printf("RPC DEBUG: RPC DEBUG: Sending result via MSP.\n");
+        printf(RPC_INFO "Sending result via MSP.\n" RPC_RESET);
         msp_send(sock, payload, sizeof(payload));
         return 0;
     } else {
-        printf("RPC DEBUG: Sending result via RHIZOME.\n");
+        printf(RPC_INFO "Sending result via Rhizome.\n" RPC_RESET);
         rpc_send_rhizome(rp.caller_sid, rp.name, payload);
         return 0;
     }
@@ -212,7 +206,7 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 
     // If there is an errer on the socket, stop it.
     if (state & (MSP_STATE_SHUTDOWN_REMOTE | MSP_STATE_CLOSED | MSP_STATE_ERROR)) {
-        printf("RPC WARN: Socket closed.\n");
+        printf(RPC_WARN "Socket closed.\n" RPC_RESET);
         msp_stop(sock);
         ret = len;
     }
@@ -221,13 +215,13 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
     if (payload && len) {
         // First make sure, we received a RPC call packet.
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
-            printf("RPC DEBUG: Received RPC via MSP.\n");
+            printf(RPC_INFO "Received RPC via MSP.\n" RPC_RESET);
             // Parse the payload to the RPCProcedure struct
             struct RPCProcedure rp = rpc_parse_call(payload, len);
 
             // Check, if we offer this procedure.
             if (rpc_check_offered(&rp) == 0) {
-                printf("RPC DEBUG: Offering desired RPC. Sending ACK.\n");
+                printf(RPC_INFO "Offering desired RPC. Sending ACK.\n" RPC_RESET);
                 // Compile and send ACK packet.
                 uint8_t ack_payload[2];
                 write_uint16(&ack_payload[0], RPC_PKT_CALL_ACK);
@@ -235,16 +229,14 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 
                 // Try to execute the procedure.
                 if (rpc_excecute(rp, sock) == 0) {
-                    printf("RPC DEBUG: RPC execution was successful.\n");
+                    printf(RPC_INFO "RPC execution was successful.\n" RPC_RESET);
                     ret = len;
                 } else {
                     ret = len;
-                    status = 2;
                 }
             } else {
-                printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
+                printf(RPC_WARN "Not offering desired RPC. Ignoring.\n" RPC_RESET);
                 ret = len;
-                status = 1;
             }
         }
     }
@@ -252,7 +244,7 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
 }
 
 void stopHandler (int signum) {
-    printf("RPC DEBUG: Caught signal with signum %i. Stopping RPC server.\n", signum);
+    printf(RPC_WARN "Caught signal with signum %i. Stopping RPC server.\n" RPC_RESET, signum);
     running = 1;
 }
 
@@ -265,7 +257,7 @@ int rpc_listen_rhizome () {
     struct CurlResultMemory curl_result_memory;
     _curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
-        printf("RPC WARN: Failed to create curl handle in post. Aborting.");
+        printf(RPC_FATAL "Failed to create curl handle in post. Aborting." RPC_RESET);
         return_code = -1;
         goto clean_rhizome_server_listener;
     }
@@ -282,7 +274,7 @@ int rpc_listen_rhizome () {
     // Get the bundlelist.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        printf("RPC WARN: CURL failed (get): %s. Aborting.\n", curl_easy_strerror(curl_res));
+        printf(RPC_FATAL "CURL failed (get): %s. Aborting.\n" RPC_RESET, curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_listener_all;
     }
@@ -332,7 +324,7 @@ int rpc_listen_rhizome () {
             // Decrypt the file.
             curl_res = curl_easy_perform(curl_handler);
             if (curl_res != CURLE_OK) {
-                printf("RPC WARN: CURL failed (decrypt): %s\n", curl_easy_strerror(curl_res));
+                printf(RPC_FATAL "CURL failed (decrypt): %s\n" RPC_RESET, curl_easy_strerror(curl_res));
                 return_code = -1;
                 goto clean_rhizome_server_listener_all;
             }
@@ -343,18 +335,18 @@ int rpc_listen_rhizome () {
             memcpy(recv_payload, curl_result_memory.memory, filesize);
 
             if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL) {
-                printf("RPC DEBUG: Received RPC via Rhizome.\n");
+                printf(RPC_INFO "Received RPC via Rhizome.\n" RPC_RESET);
                 // Parse the payload to the RPCProcedure struct
                 struct RPCProcedure rp = rpc_parse_call(recv_payload, filesize);
         		if (str_to_sid_t(&rp.caller_sid, sender) == -1){
-        			printf("RPC WARN: str_to_sid_t() failed");
+        			printf(RPC_FATAL "str_to_sid_t() failed" RPC_RESET);
                     return_code = -1;
                     goto clean_rhizome_server_listener_all;
         		}
 
                 // Check, if we offer this procedure.
                 if (rpc_check_offered(&rp) == 0) {
-                    printf("RPC DEBUG: Offering desired RPC. Sending ACK via Rhizome.\n");
+                    printf(RPC_INFO "Offering desired RPC. Sending ACK via Rhizome.\n" RPC_RESET);
 
                     // Compile and send ACK packet.
                     uint8_t payload[2];
@@ -363,13 +355,11 @@ int rpc_listen_rhizome () {
 
                     // Try to execute the procedure.
                     if (rpc_excecute(rp, MSP_SOCKET_NULL) == 0) {
-                        printf("RPC DEBUG: RPC execution was successful.\n");
-                    } else {
-                        status = 2;
+                        printf(RPC_INFO "RPC execution was successful.\n" RPC_RESET);
                     }
                 } else {
-                    printf("RPC DEBUG: Not offering desired RPC. Aborting.\n");
-                    status = 1;
+                    printf(RPC_WARN "Not offering desired RPC. Ignoring.\n" RPC_RESET);
+                    return_code = -1;
                 }
             }
         }

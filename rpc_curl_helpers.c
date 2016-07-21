@@ -9,7 +9,7 @@ size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *us
     // realloc enough memory for the result.
     mem->memory = realloc(mem->memory, mem->size + realsize + 1);
     if(mem->memory == NULL) {
-        printf("RPC WARN: Not enough memory for cURL response!\n");
+        printf(RPC_WARN "Not enough memory for cURL response!\n" RPC_RESET);
         return 0;
     }
 
