@@ -19,15 +19,15 @@ void _close_keyring () {
 int main (int argc, char **argv) {
 	// First, check if servald is running.
 	if (server_pid() == 0) {
-		printf(RPC_FATAL "Servald not running. Aborting.\n" RPC_RESET);
+		pfatal("Servald not running. Aborting.");
 		return -1;
 	}
 
 	// Make sure all required params are set.
 	if (argc < 2) {
-		printf(RPC_FATAL "Not enough arguments. Aborting.\n"
+		pfatal("Not enough arguments. Aborting.\n"
 				"Usage for starting the RPC server: %s listen\n"
-				"Usage for starting the RPC client: %s call <server_sid> <procedure> <arg_1> [<arg_2> ...]\n" RPC_RESET,
+				"Usage for starting the RPC client: %s call <server_sid> <procedure> <arg_1> [<arg_2> ...]",
 				argv[0], argv[0]);
 		return -1;
 	}
@@ -46,7 +46,7 @@ int main (int argc, char **argv) {
 
 		sid_t sid;
 		if (str_to_sid_t(&sid, sidhex) == -1){
-			printf(RPC_FATAL "str_to_sid_t() failed" RPC_RESET);
+			pfatal("Could not convert SID to sid_t. Aborting.");
 			return -1;
 		}
 
@@ -65,10 +65,10 @@ int main (int argc, char **argv) {
 
 		int ret_code = rpc_call(sid, name, nfields + 1, params);
 		if (ret_code == 0) {
-			printf(RPC_INFO "RPC result: %s\n" RPC_RESET, (char *) rpc_result);
+			pinfo("RPC result: %s", (char *) rpc_result);
 			return 0;
 		}
-		printf(RPC_FATAL "Something went wrong. No result.\n" RPC_RESET);
+		pfatal("Something went wrong. No result.");
 		return -1;
 	}
     _close_keyring();

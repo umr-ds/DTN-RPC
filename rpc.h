@@ -13,12 +13,6 @@
 
 
 // General.
-#define RPC_RESET   "\033[0m"
-#define RPC_FATAL   "\033[1m\033[31mRPC FATAL: \033[0m\033[31m" /* Red */
-#define RPC_INFO    "\033[1m\033[32mRPC INFO: \033[0m\033[32m"  /* Green */
-#define RPC_WARN    "\033[1m\033[33mRPC WARN: \033[0m\033[33m"  /* Yellow */
-#define RPC_DEBUG   "\033[1m\033[34mRPC DEBUG: \033[0m\033[34m" /* Blue */
-
 #define RPC_PKT_DISCOVER        0
 #define RPC_PKT_DISCOVER_ACK    1
 #define RPC_PKT_CALL            2

@@ -9,7 +9,7 @@ size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *us
     // realloc enough memory for the result.
     mem->memory = realloc(mem->memory, mem->size + realsize + 1);
     if(mem->memory == NULL) {
-        printf(RPC_WARN "Not enough memory for cURL response!\n" RPC_RESET);
+        pwarn("Not enough memory for cURL response!");
         return 0;
     }
 
@@ -24,14 +24,14 @@ size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *us
 
 // Init memory where cURL results are written.
 void _curl_init_memory (struct CurlResultMemory *curl_result_memory) {
-    curl_result_memory->memory = malloc(1);
+    curl_result_memory->memory = calloc(1, 1);
     curl_result_memory->size = 0;
 }
 
 // Reinit memory where cURL results are written.
 void _curl_reinit_memory (struct CurlResultMemory *curl_result_memory) {
     free(curl_result_memory->memory);
-    curl_result_memory->memory = malloc(1);
+    curl_result_memory->memory = calloc(1, 1);
     curl_result_memory->size = 0;
 }
 
