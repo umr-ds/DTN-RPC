@@ -1,12 +1,16 @@
-#include "serval.h"
-#include "server.h"
+#include <curl/curl.h>
+#include <stddef.h>
+
+#include "rpc_helpers.h"
+#include "cJSON.h"
+
 #include "conf.h"
+#include "dataformats.h"
 #include "mdp_client.h"
 #include "msp_client.h"
-#include "dataformats.h"
-#include "cJSON.h"
-#include <curl/curl.h>
-#include "rpc_helpers.h"
+#include "serval.h"
+#include "server.h"
+
 
 // General.
 #define RPC_RESET   "\033[0m"

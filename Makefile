@@ -5,7 +5,7 @@ localstatedir = ${prefix}/var
 CC = gcc
 
 # Include search paths
-CFLAGS = -Isdna/ -Isdna/sqlite-amalgamation-3100200 -Isdna/nacl/include
+CFLAGS = -Iserval/general -Iserval/sqlite-amalgamation-3100200 -Iserval/nacl
 # sysconfdir definition
 CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\"" -DLOCALSTATEDIR="\"$(localstatedir)\""
 # Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.
@@ -32,10 +32,6 @@ include obj_files
 # If we just run make, only servalrpc will be build. Make sure to run make libservalrpc.a once.
 all: servalrpc
 
-# Build the library we need.
-libservalrpc.a: $(OBJS)
-	@ar rcs libservalrpc.a $^
-
 # Build servalrpc
 servalrpc: $(RPC_SRC)
 	@$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
@@ -43,7 +39,3 @@ servalrpc: $(RPC_SRC)
 # Remove only the servalrpc binary
 clean:
 	@rm -f servalrpc
-
-# Remove the library and the binary
-clean_all:
-	@rm -f servalrpc libservalrpc.a
