@@ -1,13 +1,12 @@
-#include "rhizome.h"
 #include "serval.h"
 #include "server.h"
 #include "conf.h"
-#include "commandline.h"
 #include "mdp_client.h"
 #include "msp_client.h"
 #include "dataformats.h"
 #include "cJSON.h"
 #include <curl/curl.h>
+#include "rpc_helpers.h"
 
 // General.
 #define RPC_RESET   "\033[0m"
@@ -32,29 +31,14 @@ struct RPCProcedure {
 
 uint8_t *rpc_result[126];
 
-// Server part.
+/**** Server part. ****/
+// At this point only one main listener.
 int rpc_listen ();
 
-// Client part.
+/**** Client part. ****/
+// Transparent function.
 int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
-
-// cURL helpers.
-struct CurlResultMemory {
-  char *memory;
-  size_t size;
-};
-
-size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *userp);
-
-void _curl_init_memory (struct CurlResultMemory *curl_result_memory);
-void _curl_reinit_memory (struct CurlResultMemory *curl_result_memory);
-void _curl_free_memory (struct CurlResultMemory *curl_result_memory);
-
-void _curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header);
-
-void _curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr);
-
-// General helpers.
-char* _rpc_flatten_params (const int paramc, const char **params, const char *delim);
-uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const char *rpc_name, const char *flat_params);
-size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
+// Direct function.
+int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+// Delay-tolerant function.
+int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
