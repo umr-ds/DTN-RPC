@@ -55,8 +55,6 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     // Create a new rp struct.
     struct RPCProcedure rp;
 
-    pdebug("Payload receiver: %s", &payload[4]);
-
     // Parse the parameter count.
     rp.paramc = read_uint16(&payload[2]);
 
@@ -99,7 +97,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 
     // Write the payload to the payload file.
     char tmp_payload_file_name[L_tmpnam];
-    _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
+    _rpc_write_tmp_file(tmp_payload_file_name, payload, 130);
 
     // Init the cURL stuff.
     CURL *curl_handler = NULL;
@@ -176,7 +174,7 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
         fgets((char *)&payload[2], 127, pipe_fp);
-        payload[129] = (unsigned char) "\0";
+        memcpy(&payload[129], "\0", 1);
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {

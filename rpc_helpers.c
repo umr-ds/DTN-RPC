@@ -10,7 +10,7 @@ char* _rpc_flatten_params (const int paramc, const char **params, const char *de
     }
 
     // Iterate over all params and store them in a single string, seperated with '|'
-    char *flat_params  = malloc(params_size + paramc + 1);
+    char *flat_params  = calloc(params_size + paramc, sizeof(char));
     for (i = 0; i < paramc; i++) {
         strcat(flat_params, delim);
         strncat(flat_params, params[i], strlen(params[i]));
