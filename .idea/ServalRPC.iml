@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="CPP_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/rpc_client.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rpc_helpers.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/main.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rpc.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cJSON.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_verify_16.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_hash_sha512.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_stream_salsa2012.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/api.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_core_salsa208.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_secretbox_xsalsa20poly1305.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_core_salsa20.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/nacl.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_auth_hmacsha512256.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/randombytes.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_onetimeauth_poly1305.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_box_curve25519xsalsa20poly1305.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_core_salsa2012.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_scalarmult_curve25519.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_uint32.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_hash_sha256.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_stream_salsa208.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_sign_edwards25519sha512batch.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_core_hsalsa20.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_verify_32.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_stream_xsalsa20.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_stream_salsa20.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_hashblocks_sha256.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_auth_hmacsha256.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/nacl/crypto_hashblocks_sha512.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/sha2.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/rhizome_types.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/msp_client.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/whence.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/str.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/features.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/keyring.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/mdp_client.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/conf.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/strbuf_helpers.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/mem.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/serval.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/trigger.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/section.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/log.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/serval_types.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/os.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/debug.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/overlay_address.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/uuid.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/conf_schema.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/cli.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/httpd.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/constants.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/http_server.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/overlay_packet.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/sighandlers.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/net.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/strbuf.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/socket.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/dataformats.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/xprintf.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/fdqueue.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/meshms.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/server.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/instance.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/general/rhizome.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/sqlite-amalgamation-3100200/sqlite3.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/serval/sqlite-amalgamation-3100200/sqlite3ext.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rpc_curl_helpers.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cJSON.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rpc_server.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rpc_helpers.c" isTestSource="false" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="Header Search Paths">
+        <CLASSES>
+          <root url="file:///Library/Frameworks/OSXFUSE.framework/Headers" />
+          <root url="file:///Library/Frameworks/Libmacgpg.framework/Headers" />
+          <root url="file:///Library/Frameworks/iTunesLibrary.framework/Headers" />
+          <root url="file:///usr/local/include" />
+          <root url="file:///System/Library/Frameworks/Python.framework/Headers" />
+          <root url="file:///Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include" />
+          <root url="file:///Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include" />
+        </CLASSES>
+        <SOURCES>
+          <root url="file:///Library/Frameworks/OSXFUSE.framework/Headers" />
+          <root url="file:///Library/Frameworks/Libmacgpg.framework/Headers" />
+          <root url="file:///Library/Frameworks/iTunesLibrary.framework/Headers" />
+          <root url="file:///usr/local/include" />
+          <root url="file:///System/Library/Frameworks/Python.framework/Headers" />
+          <root url="file:///Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include" />
+          <root url="file:///Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.3.0/include" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+  </component>
+</module>
