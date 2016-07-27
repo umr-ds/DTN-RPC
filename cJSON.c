@@ -34,8 +34,6 @@
 
 static const char *global_ep;
 
-const char *cJSON_GetErrorPtr(void) {return global_ep;}
-
 static int cJSON_strcasecmp(const char *s1,const char *s2)
 {
 	if (!s1) return (s1==s2)?0:1;if (!s2) return 1;

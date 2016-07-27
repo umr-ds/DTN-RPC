@@ -51,15 +51,15 @@ int main (int argc, char **argv) {
 		}
 
 		// Get length of additional arguments...
-		unsigned int nfields = (argc == 5) ? 0 : argc - 5;
+		int nfields = (argc == 5) ? 0 : argc - 5;
 		// and create new parameter array of the particular length.
 		const char *params[nfields + 1];
 		params[0] = param1;
 		// Parse additional arguments:
-		unsigned int i;
+		int i;
 		for (i = 0; i < nfields; i++) {
 			// Skip to next parameter and save it in params at position i.
-			unsigned int n = nfields + i + 4;
+			int n = nfields + i + 4;
 			params[i + 1] = argv[n];
 		}
 
@@ -69,7 +69,7 @@ int main (int argc, char **argv) {
 			return 0;
 		}
 		pfatal("Something went wrong. No result.");
+		_close_keyring();
 		return -1;
 	}
-    _close_keyring();
 }
