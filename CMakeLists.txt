@@ -166,6 +166,14 @@ IF(HAVE_STDIO_H)
     add_definitions(-DHAVE_SYS_SOCKIO_H=1)
 ENDIF()
 
+INCLUDE(CheckTypeSize)
+CHECK_TYPE_SIZE(off_t SIZEOF_OFF_T)
+
+INCLUDE(CheckFunctionExists)
+CHECK_FUNCTION_EXISTS (bcopy HAVE_BCOPY)
+CHECK_FUNCTION_EXISTS (bzero HAVE_BZERO)
+CHECK_FUNCTION_EXISTS (bcmp HAVE_BCMP)
+
 # Include search paths
 include_directories( "SYSTEM" "${CMAKE_SOURCE_DIR}/serval/general" "${CMAKE_SOURCE_DIR}/serval/sqlite-amalgamation-3100200" "${CMAKE_SOURCE_DIR}/serval/nacl")
 
