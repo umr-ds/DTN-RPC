@@ -36,14 +36,12 @@ uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const ch
 }
 
 // Function for writing arbitary data to a temporary file. CALLER HAS TO REMOVE IT!
-size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
-    // Create tmp file.
-    tmpnam(file_name);
-    // Open the file.
-    FILE *tmp_file = fopen(file_name, "wb+");
+ssize_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
+    // Create a temporary file and open it.
+    int tmp_file = mkstemp(file_name);
     // Write the data.
-    size_t written_size = fwrite(content, 1, len, tmp_file);
+    ssize_t written_size = write(tmp_file, content, len);
     // Close the file.
-    fclose(tmp_file);
+    close(tmp_file);
     return written_size;
 }

@@ -182,14 +182,14 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
     // One extra byte for string termination.
     uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(payload_flat_params) + 1];
     _rpc_prepare_call_payload(payload, paramc, rpc_name, payload_flat_params);
-    char tmp_payload_file_name[L_tmpnam];
+    char *tmp_payload_file_name = "/tmp/plXXXXXX";
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
     // Construct the manifest and write it to the manifest file.
     int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
     char manifest_str[manifest_size];
     sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
-    char tmp_manifest_file_name[L_tmpnam];
+    char *tmp_manifest_file_name = "/tmp/mfXXXXXX";
     _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 
     // Init the cURL stuff.
