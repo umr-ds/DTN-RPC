@@ -2,68 +2,13 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(servalrpc, 0.1)
 AC_CONFIG_MACRO_DIR([m4])
 
-CPPFLAGS=-D_GNU_SOURCE
-
-dnl Set $host_os, which is needed by javac detection.
-AC_CANONICAL_SYSTEM
-
 dnl Various GCC function and variable attributes
 AX_GCC_FUNC_ATTRIBUTE(aligned)
-AX_GCC_FUNC_ATTRIBUTE(alloc_size)
-AX_GCC_FUNC_ATTRIBUTE(error)
-AX_GCC_FUNC_ATTRIBUTE(format)
-AX_GCC_FUNC_ATTRIBUTE(malloc)
 AX_GCC_FUNC_ATTRIBUTE(unused)
 AX_GCC_FUNC_ATTRIBUTE(used)
-AX_GCC_VAR_ATTRIBUTE(section)
 AX_GCC_VAR_ATTRIBUTE(section_seg)
 
-dnl Init pkg-config
-PKG_PROG_PKG_CONFIG()
-
-dnl Specify default instance path
-AC_ARG_VAR([INSTANCE_PATH], [default instance path for servald])
-AS_IF([test "x$INSTANCE_PATH" != x], [AC_DEFINE_UNQUOTED([INSTANCE_PATH], ["$INSTANCE_PATH"], [default instance path])])
-
-dnl Specify default Serval config directory
-AC_ARG_VAR([SERVAL_ETC_PATH], [default Serval config directory])
-AS_IF([test "x$SERVAL_ETC_PATH" != x], [AC_DEFINE_UNQUOTED([SERVAL_ETC_PATH], ["$SERVAL_ETC_PATH"], [default config directory])])
-
-dnl Specify default Serval run directory
-AC_ARG_VAR([SERVAL_RUN_PATH], [default Serval run directory])
-AS_IF([test "x$SERVAL_RUN_PATH" != x], [AC_DEFINE_UNQUOTED([SERVAL_RUN_PATH], ["$SERVAL_RUN_PATH"], [default run directory])])
-
-dnl Specify default Serval log directory
-AC_ARG_VAR([SERVAL_LOG_PATH], [default Serval log directory])
-AS_IF([test "x$SERVAL_LOG_PATH" != x], [AC_DEFINE_UNQUOTED([SERVAL_LOG_PATH], ["$SERVAL_LOG_PATH"], [default log directory])])
-
-dnl Specify default system log directory
-AC_ARG_VAR([SYSTEM_LOG_PATH], [default system log directory])
-AS_IF([test "x$SYSTEM_LOG_PATH" != x], [AC_DEFINE_UNQUOTED([SYSTEM_LOG_PATH], ["$SYSTEM_LOG_PATH"], [default system log directory])])
-
-dnl Specify default Serval tmp directory
-AC_ARG_VAR([SERVAL_TMP_PATH], [default Serval tmp directory])
-AS_IF([test "x$SERVAL_TMP_PATH" != x], [AC_DEFINE_UNQUOTED([SERVAL_TMP_PATH], ["$SERVAL_TMP_PATH"], [default Serval tmp directory])])
-
-dnl Specify default Rhizome store directory
-AC_ARG_VAR([RHIZOME_STORE_PATH], [default Rhizome store directory])
-AS_IF([test "x$RHIZOME_STORE_PATH" != x], [AC_DEFINE_UNQUOTED([RHIZOME_STORE_PATH], ["$RHIZOME_STORE_PATH"], [default Rhizome store directory])])
-
-dnl Check for programs.
-AC_PROG_CC
-
-dnl Math library functions for spandsp
-AC_CHECK_HEADERS([math.h], [INSERT_MATH_HEADER="#include <math.h>"])
-AC_CHECK_HEADERS([float.h])
-
-dnl XXX Isn't this pointless? we are always linked against libc
-AC_CHECK_LIB(c,srandomdev)
-
-dnl Solaris hides nanosleep here
-AC_CHECK_LIB(rt,nanosleep)
-
-AC_CHECK_FUNCS([getpeereid bcopy bzero bcmp lseek64])
-AC_CHECK_TYPES([off64_t], [have_off64_t=1], [have_off64_t=0])
+AC_CHECK_FUNCS([bcopy bzero bcmp])
 AC_CHECK_SIZEOF([off_t])
 
 dnl There must be a 64-bit seek(2) system call of some kind
@@ -72,9 +17,22 @@ AS_IF([test "x$have_lseek64_t" = "xno" -a "x$ac_cv_sizeof_off_t" != x8 ], [
 ])
 
 AC_CHECK_HEADERS(
-    stdio.h \
-    errno.h \
-    stdlib.h \
+		curl/curl.h \
+		stddef.h \
+		stdint.h \
+		tdio.h \
+		errno.h \
+		stdlib.h \
+		stdarg.h \
+		sys/types.h \
+		linux/if.h \
+		ctype.h \
+		fcntl.h \
+		inttypes.h \
+		limits.h \
+		jni.h \
+		alloca.h \
+		sys/un.h \
     strings.h \
     unistd.h \
     string.h \
@@ -83,44 +41,21 @@ AC_CHECK_HEADERS(
     sys/mman.h \
     sys/time.h \
     sys/ucred.h \
-    sys/statvfs.h \
     sys/stat.h \
     sys/vfs.h \
     poll.h \
     netdb.h \
-    linux/ioctl.h \
     linux/netlink.h \
     linux/rtnetlink.h \
     net/if.h \
     netinet/in.h \
     ifaddrs.h \
-    net/route.h \
-    signal.h \
-    jni.h \
     ucred.h \
-    sys/filio.h \
-    sys/endian.h \
-    sys/byteorder.h \
-    sys/sockio.h \
-    sys/socket.h
+    sys/sockio.h
 )
-
-AC_CHECK_HEADERS(
-    linux/if.h
-,,, [
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-])
 
 dnl Lazy way of checking for Linux
 AS_IF([test "x$ac_cv_header_linux_if_h" = xyes], [AC_DEFINE([USE_ABSTRACT_NAMESPACE])])
-
-AC_CHECK_LIB(m,sqrtf,[LDFLAGS="$LDFLAGS -lm"])
-AC_CHECK_LIB(nsl,callrpc,[LDFLAGS="$LDFLAGS -lnsl"])
-AC_CHECK_LIB(socket,socket,[LDFLAGS="$LDFLAGS -lsocket"])
-AC_CHECK_LIB(dl,dlopen,[LDFLAGS="$LDFLAGS -ldl"])
-AC_CHECK_LIB(curl,curl_easy_init,[LDFLAGS="$LDFLAGS -lcurl"])
 
 AC_CACHE_CHECK([linker -z relro option], libc_cv_z_relro, [dnl
   libc_cv_z_relro=no
@@ -151,24 +86,6 @@ AS_IF([test x"$have_ssp" = "x1"], [
     AC_MSG_RESULT([no])
     CFLAGS="$save_cflags"
 ])
-
-dnl Some platforms still seem to lack the basic single precision trig and power related function.
-AC_SEARCH_LIBS([sinf], [m], AC_DEFINE([HAVE_SINF], [1], [Define to 1 if you have the sinf() function.]))
-AC_SEARCH_LIBS([cosf], [m], AC_DEFINE([HAVE_COSF], [1], [Define to 1 if you have the cosf() function.]))
-AC_SEARCH_LIBS([tanf], [m], AC_DEFINE([HAVE_TANF], [1], [Define to 1 if you have the tanf() function.]))
-AC_SEARCH_LIBS([asinf], [m], AC_DEFINE([HAVE_ASINF], [1], [Define to 1 if you have the asinf() function.]))
-AC_SEARCH_LIBS([acosf], [m], AC_DEFINE([HAVE_ACOSF], [1], [Define to 1 if you have the acosf() function.]))
-AC_SEARCH_LIBS([atanf], [m], AC_DEFINE([HAVE_ATANF], [1], [Define to 1 if you have the atanf() function.]))
-AC_SEARCH_LIBS([atan2f], [m], AC_DEFINE([HAVE_ATAN2F], [1], [Define to 1 if you have the atan2f() function.]))
-AC_SEARCH_LIBS([ceilf], [m], AC_DEFINE([HAVE_CEILF], [1], [Define to 1 if you have the ceilf() function.]))
-AC_SEARCH_LIBS([floorf], [m], AC_DEFINE([HAVE_FLOORF], [1], [Define to 1 if you have the floorf() function.]))
-AC_SEARCH_LIBS([powf], [m], AC_DEFINE([HAVE_POWF], [1], [Define to 1 if you have the powf() function.]))
-AC_SEARCH_LIBS([expf], [m], AC_DEFINE([HAVE_EXPF], [1], [Define to 1 if you have the expf() function.]))
-AC_SEARCH_LIBS([logf], [m], AC_DEFINE([HAVE_LOGF], [1], [Define to 1 if you have the logf() function.]))
-AC_SEARCH_LIBS([log10f], [m], AC_DEFINE([HAVE_LOG10F], [1], [Define to 1 if you have the log10f() function.]))
-
-dnl Check for strlcpy (eg Ubuntu)
-AC_SEARCH_LIBS([strlcpy], [], AC_DEFINE([HAVE_STRLCPY], [1], [Define to 1 if you have the strlcpy() function.]))
 
 AC_OUTPUT([
     Makefile
