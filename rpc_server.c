@@ -21,7 +21,7 @@ int rpc_check_offered (struct RPCProcedure *rp) {
     size_t len = 0;
     int ret = -1;
 
-    // Read the file line by line.
+    // Read the file line by line.s
     // TODO: UNIQUE RPC NAME
     while (getline(&line, &len, conf_file) != -1) {
         // Split the line at the first space to get the return type.
