@@ -21,30 +21,29 @@ int rpc_check_offered (struct RPCProcedure *rp) {
     size_t len = 0;
     int ret = -1;
 
-    // Read the file line by line.s
-    // TODO: UNIQUE RPC NAME
+    // Read the file line by line.
     while (getline(&line, &len, conf_file) != -1) {
         // Split the line at the first space to get the return type.
-        char *return_type = strtok(line, " ");
-        // Split the line at the second space to get the name.
-        char *tok = strtok(NULL, " ");
+        char *name = strtok(line, " ");
+        // If the name matches with the received name ...
+        if (strncmp(name, rp->name, strlen(name)) == 0) {
+            ret = 1;
+        }
 
-        // If the name matches with the received name, this server offers
-        // the desired procedure.
-        if (strncmp(tok, rp->name, strlen(tok)) == 0) {
-            // Sideeffect: parse the return type and store it in the rp struct
-            rp->return_type = calloc(strlen(return_type), sizeof(char));
-            strncpy(rp->return_type, return_type, strlen(return_type));
+        // Split the line at the second space to get the paramc.
+        char *paramc = strtok(NULL, " ");
+		// ... and the parameter count, the server offers this RPC.
+        if (strncmp(paramc, rp->paramc.paramc_s, strlen(paramc)) == 0) {
             ret = 0;
-            break;
+			break;
         }
     }
 
     // Cleanup.
-    fclose(conf_file);
     if (line) {
         free(line);
     }
+    fclose(conf_file);
 
     return ret;
 }
@@ -56,7 +55,9 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     struct RPCProcedure rp;
 
     // Parse the parameter count.
-    rp.paramc = read_uint16(&payload[2]);
+    rp.paramc.paramc_n = read_uint16(&payload[2]);
+	rp.paramc.paramc_s = calloc(sizeof(char), 6);
+	sprintf(rp.paramc.paramc_s, "%u", read_uint16(&payload[2]));
 
     // Cast the payload starting at byte 5 to string.
     // The first 4 bytes are for packet type and param count.
@@ -74,7 +75,7 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     // until it's it fully consumed. Store the parameters as strings in the designated struct field.
     int i = 0;
 
-    rp.params = calloc(rp.paramc, sizeof(char*));
+    rp.params = calloc(rp.paramc.paramc_n, sizeof(char*));
     tok = strtok(NULL, "|");
     while (tok) {
         rp.params[i] = calloc(strlen(tok), sizeof(char));
@@ -155,7 +156,7 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
 
     // Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
     // we have to compile the bin with all parameters from the struct.
-    char *flat_params = _rpc_flatten_params(rp.paramc, (const char **) rp.params, " ");
+    char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (const char **) rp.params, " ");
 
     char cmd[strlen(bin) + strlen(flat_params)];
     sprintf(cmd, "%s%s", bin, flat_params);

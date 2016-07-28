@@ -17,13 +17,15 @@ To offer a RPC, the server has to do mainly two things: declare and implement a 
 #### Declaration
 All offered RPCs has to be declared in a file named `rpc.conf`, which has to be located in the `$SERVAL_ETC_PATH`. It is the same folder where the general `serval.conf` file is located.
 
-The structure is as follows: `<return_type> <name> <param_tpye_1> [<param_type_2> ...]`
+The structure is as follows: `<name> <param_count> <param_tpye_1> [<param_type_2> ...]`
 
-Even if your RPC does not need any parameter, you have to specify at least one, which is, obviously, `void`. Same for the return type.
+Even if your RPC does not need any parameter, you have to specify at least one, which is, obviously, `void`.
+
+The parameter types are somewhat pointless since ServalRPC does no type checks. Everything is treated as `char*`. The programmer is responsible for passing the correct parameters to the desired procedure. It is also important that the name is somewhat unique. If there are multiple procedures with the same name and the same amount of parameters, the result may be not correct if the you call this procedure not directly.
 
 ##### Example
 ```
-int add int int
+add 2 int int
 ```
 
 #### Implementation

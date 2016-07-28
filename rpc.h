@@ -19,10 +19,14 @@
 #define RPC_PKT_CALL_ACK        3
 #define RPC_PKT_CALL_RESPONSE   4
 
+struct ParamRepr {
+	uint16_t paramc_n;
+	char *paramc_s;
+};
+
 struct RPCProcedure {
-    char *return_type;
     char *name;
-    uint16_t paramc;
+    struct ParamRepr paramc;
     char **params;
     sid_t caller_sid;
 };
