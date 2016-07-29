@@ -11,6 +11,9 @@
 #include "serval.h"
 #include "server.h"
 
+#define MDP_PORT_RPC_DISCOVER	18
+#define MDP_PORT_RPC_MSP		112
+
 
 // General.
 #define RPC_PKT_DISCOVER        0

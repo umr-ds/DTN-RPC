@@ -6,7 +6,7 @@
 
 int running = 0;
 
-int mdp_fd;
+int mdp_fd_msp;
 
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
@@ -84,6 +84,10 @@ struct RPCProcedure rpc_parse_call (const uint8_t *payload, size_t len) {
     }
     return rp;
 }
+//
+// int rpc_listen_msp () {
+//
+// }
 
 // Send the result via Rhizome
 int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
@@ -374,44 +378,80 @@ int rpc_listen_rhizome () {
     return return_code;
 }
 
+DEFINE_BINDING(MDP_PORT_RPC_DISCOVER, rpc_discover_handle);
+static int rpc_discover_handle (struct internal_mdp_header *UNUSED(header), struct overlay_buffer *UNUSED(payload) ) {
+
+  pdebug("Working.");
+  return -1;
+}
+
 int rpc_listen () {
     // Create address struct ...
-    struct mdp_sockaddr addr;
-    bzero(&addr, sizeof addr);
+    struct mdp_sockaddr addr_msp;
+    bzero(&addr_msp, sizeof addr_msp);
     // ... and set the sid to a local sid and port where to listen at.
-    addr.port = 112;
-    addr.sid = BIND_PRIMARY;
+    addr_msp.port = MDP_PORT_RPC_MSP;
+    addr_msp.sid = BIND_PRIMARY;
 
     // Create MDP socket.
-    mdp_fd = mdp_socket();
+    mdp_fd_msp = mdp_socket();
 
     // Sockets should not block.
-    set_nonblock(mdp_fd);
+    set_nonblock(mdp_fd_msp);
     set_nonblock(STDIN_FILENO);
     set_nonblock(STDERR_FILENO);
     set_nonblock(STDOUT_FILENO);
 
     // Create MSP socket.
-    MSP_SOCKET sock = msp_socket(mdp_fd, 0);
+    MSP_SOCKET sock_msp = msp_socket(mdp_fd_msp, 0);
     // Connect to local socker ...
-    msp_set_local(sock, &addr);
+    msp_set_local(sock_msp, &addr_msp);
     // ... and listen it.
-    msp_listen(sock);
+    msp_listen(sock_msp);
 
     // Set the handler to handle incoming packets.
-    msp_set_handler(sock, server_handler, NULL);
+    msp_set_handler(sock_msp, server_handler, NULL);
 
     signal(SIGINT, stopHandler);
     signal(SIGTERM, stopHandler);
 
     time_ms_t next_time;
 
+	//
+	//
+	//
+	//
+	//
+	//
+	//
+	// int mdp_sockfd;
+	// if ((mdp_sockfd = mdp_socket()) < 0) {
+	// 	pfatal("Could not create MDP listening socket.");
+	// 	return -1;
+	// }
+	//
+	// struct mdp_header mdp_header;
+	// bzero(&mdp_header, sizeof(mdp_header));
+	//
+	// mdp_header.local.sid = BIND_PRIMARY;
+	// mdp_header.remote.sid = SID_BROADCAST;
+	// mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
+	// mdp_header.qos = OQ_MESH_MANAGEMENT;
+	// mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
+	//
+	// if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
+	// 	pfatal("Could not bind to broadcast address.");
+	// 	return -1;
+	// }
+	//
+	//
+
     // Listen.
     while(running < 2){
         if (running == 1) {
-            sock = MSP_SOCKET_NULL;
-            msp_close_all(mdp_fd);
-            mdp_close(mdp_fd);
+            sock_msp = MSP_SOCKET_NULL;
+            msp_close_all(mdp_fd_msp);
+            mdp_close(mdp_fd_msp);
             msp_processing(&next_time);
             break;
         }
@@ -419,7 +459,28 @@ int rpc_listen () {
         // Process MSP socket
         msp_processing(&next_time);
 
-        msp_recv(mdp_fd);
+        msp_recv(mdp_fd_msp);
+
+
+
+
+		// if (mdp_poll(mdp_sockfd, 500) > 0){
+		// 	pdebug("Test");
+		// 	struct mdp_header mdp_recv_header;
+		// 	uint8_t recv_payload[sizeof(sid_t)];
+		// 	ssize_t len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
+		//
+		// 	if (len > 0) {
+		// 		if (read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER) {
+		// 			pdebug("RECEIVED: %d", read_uint16(&recv_payload[0]));
+		// 		}
+		// 	}
+		// }
+
+
+
+
+
 
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);

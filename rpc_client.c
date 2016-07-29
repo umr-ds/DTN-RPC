@@ -2,60 +2,65 @@
 
 int received = 0;
 
-// NOT NEEDED SO FAR! WILL BE NEEDED FOR BROADCASTS.
-//int rpc_discover (sid_t server_sid, char *rpc_name) {
-//    int mdp_sockfd;
-//    if ((mdp_sockfd = mdp_socket()) < 0) {
-//        return WHY("Cannot create MDP socket");
-//    }
-//
-//    struct mdp_header mdp_header;
-//    bzero(&mdp_header, sizeof(mdp_header));
-//
-//    mdp_header.local.sid = BIND_PRIMARY;
-//    mdp_header.remote.sid = server_sid;
-//    mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
-//    mdp_header.qos = OQ_MESH_MANAGEMENT;
-//    mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
-//
-//    if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
-//        pfatal("COULD NOT BIND");
-//        return -1;
-//    }
-//
-//    time_ms_t finish = gettime_ms() + 10;
-//    int acked = 0;
-//
-//    while (gettime_ms() < finish && acked != 1) {
-//        uint8_t payload[strlen(rpc_name) + 2];
-//        write_uint16(&payload[0], RPC_PKT_DISCOVER);
-//        memcpy(&payload[2], rpc_name, strlen(rpc_name));
-//
-//        if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0){
-//            pfatal("SEND FAIL");
-//            return -1;
-//        }
-//        if (mdp_poll(mdp_sockfd, 500)<=0)
-//            continue;
-//
-//        struct mdp_header mdp_recv_header;
-//        uint8_t recv_payload[strlen(rpc_name)];
-//        ssize_t len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
-//
-//        if (len < 0) {
-//            printf(RPC DEBUG "LEN FAIL\n" RPC_RESET);
-//            break;
-//        }
-//
-//        if (read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER_ACK) {
-//            acked = 1;
-//            printf(RPC DEBUG "RECEIVED: %d, LEN: %i\n" RPC_RESET, read_uint16(&recv_payload[0]), len);
-//        }
-//
-//
-//    }
-//    return acked;
-//}
+int rpc_discover (sid_t server_sid, const char *rpc_name, const int paramc) {
+	int mdp_sockfd;
+	if ((mdp_sockfd = mdp_socket()) < 0) {
+		return WHY("Cannot create MDP socket");
+	}
+	pdebug("Socket done");
+
+	struct mdp_header mdp_header;
+	bzero(&mdp_header, sizeof(mdp_header));
+	pdebug("Header done");
+
+	mdp_header.local.sid = BIND_PRIMARY;
+	mdp_header.remote.sid = SID_BROADCAST;
+	mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
+	mdp_header.qos = OQ_MESH_MANAGEMENT;
+	mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
+
+	pdebug("Header complete");
+	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
+		pfatal("Could not bind to broadcast address.");
+		return -1;
+	}
+
+	uint8_t payload[strlen(rpc_name) + 2 + 2];
+	write_uint16(&payload[0], RPC_PKT_DISCOVER);
+	write_uint16(&payload[2], paramc);
+	memcpy(&payload[4], rpc_name, strlen(rpc_name));
+
+	if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0){
+		pfatal("Could not discover packet. Aborting.");
+		return -1;
+	}
+
+	time_ms_t finish = gettime_ms() + 10000;
+	int acked = 0;
+
+	while (gettime_ms() < finish && acked != 1) {
+
+		if (mdp_poll(mdp_sockfd, 500) <= 0) {
+			continue;
+		}
+
+		struct mdp_header mdp_recv_header;
+		uint8_t recv_payload[sizeof(sid_t) + strlen(rpc_name)];
+		ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
+
+		if (incoming_len < 0) {
+			pwarn("Received empty packet. Aborting.");
+			break;
+		}
+
+		if ((read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER_ACK) && (strncmp(rpc_name, (char*)&recv_payload[2], strlen(rpc_name)) == 0)) {
+			memcpy(&server_sid, &recv_payload[2 + strlen(rpc_name)], sizeof(sid_t));
+			acked = 1;
+			pinfo("Server %s offers \"%s\". Calling", alloca_tohex_sid_t(server_sid), rpc_name);
+		}
+	}
+	return acked;
+}
 
 // The RPC cliend handler
 size_t client_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
@@ -100,7 +105,7 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
     bzero(&addr, sizeof addr);
     // ... and set the sid and port of the server.
     addr.sid = sid;
-    addr.port = 112;
+    addr.port = MDP_PORT_RPC_MSP;
 
     // Create MDP socket.
     int mdp_fd = mdp_socket();
@@ -171,6 +176,7 @@ int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const
 
 int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
     int return_code = -1;
+	received = 0;
 
     // Flatten the params.
     char *payload_flat_params = _rpc_flatten_params(paramc, params, "|");
@@ -311,6 +317,7 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
             if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK){
                 // If we got an ACK packet, we wait (for now) 5 more seconds.
                 pinfo("Received ACK via Rhizome. Waiting.");
+				return_code = 1;
                 waittime = 20;
             } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
                 // We got our result!
@@ -338,23 +345,29 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 
 // General call function. For transparent usage.
 int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params) {
-    // TODO: THIS IS FOR ANY/ALL RPCS.
-    if (is_sid_t_any(server_sid) || is_sid_t_broadcast(server_sid)) {
-        return -1;
-    } else {
+	// Broadcast the RPC.
+    if (is_sid_t_broadcast(server_sid)) {
+		pdebug("Broadcast");
+		rpc_discover(server_sid, rpc_name, paramc);
+    }
+
+	else {
         // Call the rpc directly over msp.
-        int call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);
-        // int call_return = rpc_call_msp(server_sid, rpc_name, paramc, params);
+        int call_return = rpc_call_msp(server_sid, rpc_name, paramc, params);
 
         if (call_return == -1) {
-            pwarn("Server not available via MSP. Trying Rhizome.");
-            //call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);
+			// If MSP ist not possible, try Rhizome.
+	        pwarn("Server not available via MSP. Trying Rhizome.");
+            call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);
+			if (call_return == -1) {
+				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
+				return -1;
+			}
+        } if (call_return == 0) {
+            pfatal("Seems like the server accepted the call, but could not receive ACK or result. Aborting.");
             return -1;
-        } else if (call_return == 0) {
-            pdebug("NOT RECEIVED ACK");
-            return -1;
-        } else if (call_return == 1) {
-            pdebug("COULD NOT COLLECT RESULT AFTER ACK");
+        } if (call_return == 1) {
+            pfatal("Received ACK but could not collect result. Aborting.");
             return -1;
         } else {
             return 0;

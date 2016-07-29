@@ -1,6 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(servalrpc, 0.1)
 AC_CONFIG_MACRO_DIR([m4])
+: ${CFLAGS=""}
+AC_PROG_CC
 
 dnl Various GCC function and variable attributes
 AX_GCC_FUNC_ATTRIBUTE(aligned)

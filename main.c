@@ -27,7 +27,7 @@ int main (int argc, char **argv) {
 	if (argc < 2) {
 		pfatal("Not enough arguments. Aborting.\n"
 				"Usage for starting the RPC server: %s listen\n"
-				"Usage for starting the RPC client: %s call <server_sid> <procedure> <arg_1> [<arg_2> ...]",
+				"Usage for starting the RPC client: %s call (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]",
 				argv[0], argv[0]);
 		return -1;
 	}
@@ -44,6 +44,9 @@ int main (int argc, char **argv) {
 		const char *name = argv[3];
 		const char *param1 = argv[4];
 
+		if (strncmp(sidhex, "any", 3) == 0) {
+			sidhex = "broadcast";
+		}
 		sid_t sid;
 		if (str_to_sid_t(&sid, sidhex) == -1){
 			pfatal("Could not convert SID to sid_t. Aborting.");

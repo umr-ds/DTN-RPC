@@ -34,4 +34,4 @@ servalrpc: $(SRCS)
 	@$(CC) -o $@ $^ $(CFLAGS) $(DEFS) $(LDFLAGS)
 
 clean:
-	@$(RM) -r Makefile autom4te.cache/ aclocal.m4 config.log config.status configure servalrpc
+	@$(RM) -rf autom4te.cache/ aclocal.m4 config.log config.status servalrpc
