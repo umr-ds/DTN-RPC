@@ -16,11 +16,9 @@
 
 
 // General.
-#define RPC_PKT_DISCOVER        0
-#define RPC_PKT_DISCOVER_ACK    1
-#define RPC_PKT_CALL            2
-#define RPC_PKT_CALL_ACK        3
-#define RPC_PKT_CALL_RESPONSE   4
+#define RPC_PKT_CALL            0
+#define RPC_PKT_CALL_ACK        1
+#define RPC_PKT_CALL_RESPONSE   2
 
 struct ParamRepr {
 	uint16_t paramc_n;

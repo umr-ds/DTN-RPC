@@ -150,7 +150,7 @@ int rpc_send_rhizome (const sid_t sid, const char *rpc_name, uint8_t *payload) {
 }
 
 // Execute the procedure
-int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
+int rpc_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     pinfo("Executing \"%s\".", rp.name);
     FILE *pipe_fp;
 
@@ -172,14 +172,13 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
     }
 
     // Payload. Two bytes for packet type, 126 bytes for the result and 1 byte for '\0' to make sure the result will be a zero terminated string.
-    uint8_t payload[2 + 127 + 1];
-    write_uint16(&payload[0], RPC_PKT_CALL_RESPONSE);
+    write_uint16(&result_payload[0], RPC_PKT_CALL_RESPONSE);
 
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        fgets((char *)&payload[2], 127, pipe_fp);
-        memcpy(&payload[129], "\0", 1);
+        fgets((char *)&result_payload[2], 127, pipe_fp);
+        memcpy(&result_payload[129], "\0", 1);
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {
@@ -191,18 +190,7 @@ int rpc_excecute (struct RPCProcedure rp, MSP_SOCKET sock) {
         return -1;
     }
 
-    // If the connection is still alive, send the result back.
-    if (!msp_socket_is_null(sock) && msp_socket_is_data(sock) == 1) {
-        pinfo("Sending result via MSP.");
-        msp_send(sock, payload, sizeof(payload));
-        return 0;
-    } else {
-        pinfo("Sending result via Rhizome.");
-        rpc_send_rhizome(rp.caller_sid, rp.name, payload);
-        return 0;
-    }
-
-    return -1;
+    return 0;
 }
 
 // Handler of the RPC server
@@ -233,10 +221,14 @@ size_t server_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payloa
                 ret = msp_send(sock, ack_payload, sizeof(ack_payload));
 
                 // Try to execute the procedure.
-                if (rpc_excecute(rp, sock) == 0) {
+			    uint8_t result_payload[2 + 127 + 1];
+                if (rpc_excecute(result_payload, rp) == 0) {
+					pinfo("Sending result via MSP.");
+        			msp_send(sock, result_payload, sizeof(result_payload));
                     pinfo("RPC execution was successful.");
                     ret = len;
                 } else {
+					pfatal("RPC execution was not successful. Aborting.");
                     ret = len;
                 }
             } else {
@@ -359,7 +351,10 @@ int rpc_listen_rhizome () {
                     rpc_send_rhizome(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.
-                    if (rpc_excecute(rp, MSP_SOCKET_NULL) == 0) {
+				    uint8_t result_payload[2 + 127 + 1];
+	                if (rpc_excecute(result_payload, rp) == 0) {
+						pinfo("Sending result via Rhizome.");
+        				rpc_send_rhizome(rp.caller_sid, rp.name, payload);
                         pinfo("RPC execution was successful.");
                     }
                 } else {
@@ -378,11 +373,53 @@ int rpc_listen_rhizome () {
     return return_code;
 }
 
-DEFINE_BINDING(MDP_PORT_RPC_DISCOVER, rpc_discover_handle);
-static int rpc_discover_handle (struct internal_mdp_header *UNUSED(header), struct overlay_buffer *UNUSED(payload) ) {
+static int mdp_handle(int mdp_sockfd) {
+	struct mdp_header header;
+	uint8_t payload[1200];
 
-  pdebug("Working.");
-  return -1;
+	ssize_t len = mdp_recv(mdp_sockfd, &header, payload, sizeof(payload));
+	if (len == -1) {
+		pwarn("Could not receive MDP payload.");
+		return -1;
+	}
+
+	pdebug("Local SID: %s", alloca_tohex_sid_t(header.local.sid));
+
+	header.local.sid = my_subscriber->sid;
+
+	pdebug("Local SID: %s", alloca_tohex_sid_t(header.local.sid));
+
+	if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
+		pinfo("Received RPC call via MDP broadcast.");
+		// Parse the payload to the RPCProcedure struct
+		struct RPCProcedure rp = rpc_parse_call(payload, len);
+
+		// Check, if we offer this procedure.
+		int ret = 0;
+        if (rpc_check_offered(&rp) == 0) {
+            pinfo("Offering desired RPC. Sending ACK.");
+            // Compile and send ACK packet.
+            uint8_t ack_payload[2];
+            write_uint16(&ack_payload[0], RPC_PKT_CALL_ACK);
+            ret = mdp_send(mdp_sockfd, &header, ack_payload, sizeof(ack_payload));
+
+            // Try to execute the procedure.
+			uint8_t result_payload[2 + 127 + 1];
+			if (rpc_excecute(result_payload, rp) == 0) {
+				pinfo("Sending result via MDP.");
+				mdp_send(mdp_sockfd, &header, result_payload, sizeof(result_payload));
+                pinfo("RPC execution was successful.");
+                ret = len;
+            } else {
+                ret = len;
+            }
+        } else {
+            pwarn("Not offering desired RPC. Ignoring.");
+            ret = len;
+        }
+    }
+
+	return 0;
 }
 
 int rpc_listen () {
@@ -390,8 +427,8 @@ int rpc_listen () {
     struct mdp_sockaddr addr_msp;
     bzero(&addr_msp, sizeof addr_msp);
     // ... and set the sid to a local sid and port where to listen at.
-    addr_msp.port = MDP_PORT_RPC_MSP;
     addr_msp.sid = BIND_PRIMARY;
+    addr_msp.port = MDP_PORT_RPC_MSP;
 
     // Create MDP socket.
     mdp_fd_msp = mdp_socket();
@@ -424,27 +461,24 @@ int rpc_listen () {
 	//
 	//
 	//
-	// int mdp_sockfd;
-	// if ((mdp_sockfd = mdp_socket()) < 0) {
-	// 	pfatal("Could not create MDP listening socket.");
-	// 	return -1;
-	// }
-	//
-	// struct mdp_header mdp_header;
-	// bzero(&mdp_header, sizeof(mdp_header));
-	//
-	// mdp_header.local.sid = BIND_PRIMARY;
-	// mdp_header.remote.sid = SID_BROADCAST;
-	// mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
-	// mdp_header.qos = OQ_MESH_MANAGEMENT;
-	// mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
-	//
-	// if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
-	// 	pfatal("Could not bind to broadcast address.");
-	// 	return -1;
-	// }
-	//
-	//
+	int mdp_sockfd;
+	if ((mdp_sockfd = mdp_socket()) < 0) {
+		pfatal("Could not create MDP listening socket.");
+		return -1;
+	}
+
+	struct mdp_sockaddr local_addr = {.sid = BIND_PRIMARY, .port = MDP_PORT_RPC_DISCOVER};
+
+	if (mdp_bind(mdp_sockfd, &local_addr) < 0){
+		pfatal("Could not bind to broadcast address.");
+		return -1;
+	}
+
+	struct pollfd fds[2];
+	fds[0].fd = mdp_sockfd;
+	fds[0].events = POLLIN;
+
+
 
     // Listen.
     while(running < 2){
@@ -461,26 +495,11 @@ int rpc_listen () {
 
         msp_recv(mdp_fd_msp);
 
+		poll(fds, 1, 500);
 
-
-
-		// if (mdp_poll(mdp_sockfd, 500) > 0){
-		// 	pdebug("Test");
-		// 	struct mdp_header mdp_recv_header;
-		// 	uint8_t recv_payload[sizeof(sid_t)];
-		// 	ssize_t len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
-		//
-		// 	if (len > 0) {
-		// 		if (read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER) {
-		// 			pdebug("RECEIVED: %d", read_uint16(&recv_payload[0]));
-		// 		}
-		// 	}
-		// }
-
-
-
-
-
+		if (fds->revents & POLLIN){
+            mdp_handle(mdp_sockfd);
+        }
 
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);

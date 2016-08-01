@@ -2,64 +2,71 @@
 
 int received = 0;
 
-int rpc_discover (sid_t server_sid, const char *rpc_name, const int paramc) {
+int rpc_discover (const char *rpc_name, const int paramc, const char **params) {
 	int mdp_sockfd;
 	if ((mdp_sockfd = mdp_socket()) < 0) {
 		return WHY("Cannot create MDP socket");
 	}
-	pdebug("Socket done");
 
 	struct mdp_header mdp_header;
 	bzero(&mdp_header, sizeof(mdp_header));
-	pdebug("Header done");
 
 	mdp_header.local.sid = BIND_PRIMARY;
-	mdp_header.remote.sid = SID_BROADCAST;
+	mdp_header.remote.sid = BIND_ALL;
 	mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
-	mdp_header.qos = OQ_MESH_MANAGEMENT;
-	mdp_header.ttl = PAYLOAD_TTL_DEFAULT;
 
-	pdebug("Header complete");
 	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
 		pfatal("Could not bind to broadcast address.");
 		return -1;
 	}
 
-	uint8_t payload[strlen(rpc_name) + 2 + 2];
-	write_uint16(&payload[0], RPC_PKT_DISCOVER);
-	write_uint16(&payload[2], paramc);
-	memcpy(&payload[4], rpc_name, strlen(rpc_name));
+	char *flat_params = _rpc_flatten_params(paramc, params, "|");
+
+	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+    _rpc_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
 	if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0){
 		pfatal("Could not discover packet. Aborting.");
 		return -1;
 	}
 
-	time_ms_t finish = gettime_ms() + 10000;
-	int acked = 0;
+	struct pollfd fds[2];
+    fds->fd = mdp_sockfd;
+    fds->events = POLLIN;
 
-	while (gettime_ms() < finish && acked != 1) {
+	while (received == 0 || received == 1) {
 
-		if (mdp_poll(mdp_sockfd, 500) <= 0) {
-			continue;
-		}
+		// Poll the socket
+        poll(fds, 1, 500);
 
-		struct mdp_header mdp_recv_header;
-		uint8_t recv_payload[sizeof(sid_t) + strlen(rpc_name)];
-		ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
+        // If something arrived, receive it.
+        if (fds->revents & POLLIN){
+			struct mdp_header mdp_recv_header;
+			uint8_t recv_payload[1200];
+			ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
 
-		if (incoming_len < 0) {
-			pwarn("Received empty packet. Aborting.");
-			break;
-		}
+			if (incoming_len < 0) {
+				pwarn("Received empty packet. Aborting.");
+				break;
+			}
 
-		if ((read_uint16(&recv_payload[0]) == RPC_PKT_DISCOVER_ACK) && (strncmp(rpc_name, (char*)&recv_payload[2], strlen(rpc_name)) == 0)) {
-			memcpy(&server_sid, &recv_payload[2 + strlen(rpc_name)], sizeof(sid_t));
-			acked = 1;
-			pinfo("Server %s offers \"%s\". Calling", alloca_tohex_sid_t(server_sid), rpc_name);
+			// Get the packet type.
+	        uint16_t pkt_type = read_uint16(&recv_payload[0]);
+	        // If we receive an ACK, just print.
+	        if (pkt_type == RPC_PKT_CALL_ACK) {
+	            pinfo("Server accepted call.");
+	            received = 1;
+	        } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
+	            pinfo("Answer received.");
+	            memcpy(rpc_result, &recv_payload[2], incoming_len - 2);
+	            received = 2;
+	        }
 		}
 	}
-	return acked;
+
+    mdp_close(mdp_sockfd);
+
+	return received;
 }
 
 // The RPC cliend handler
@@ -347,8 +354,21 @@ int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, c
 int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params) {
 	// Broadcast the RPC.
     if (is_sid_t_broadcast(server_sid)) {
-		pdebug("Broadcast");
-		rpc_discover(server_sid, rpc_name, paramc);
+		int call_return = rpc_discover(rpc_name, paramc, params);
+
+		if (call_return == -1) {
+			// If MSP ist not possible, try Rhizome.
+	        pwarn("No Server found. Trying Rhizome (later).");
+			return -1;
+        } if (call_return == 0) {
+            pfatal("Seems like the server accepted the call, but could not receive ACK or result. Aborting.");
+            return -1;
+        } if (call_return == 1) {
+            pfatal("Received ACK but could not collect result. Aborting.");
+            return -1;
+        } else {
+            return 0;
+        }
     }
 
 	else {
