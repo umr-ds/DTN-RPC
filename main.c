@@ -16,6 +16,11 @@ void _close_keyring () {
     keyring = NULL;
 }
 
+void rpc_server_sig_handler (int signum) {
+    pwarn("Caught signal with signum %i. Stopping RPC server.", signum);
+    running = 1;
+}
+
 int main (int argc, char **argv) {
 	// First, check if servald is running.
 	if (server_pid() == 0) {
@@ -36,6 +41,8 @@ int main (int argc, char **argv) {
 
 	// This is the server part. We just listen.
 	if (strncmp(argv[1], "listen", strlen("listen")) == 0) {
+    	signal(SIGINT, rpc_server_sig_handler);
+    	signal(SIGTERM, rpc_server_sig_handler);
 		return rpc_listen();
 	}
 	else {

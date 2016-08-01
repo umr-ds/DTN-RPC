@@ -373,7 +373,7 @@ int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, co
 
 	else {
         // Call the rpc directly over msp.
-        int call_return = rpc_call_msp(server_sid, rpc_name, paramc, params);
+        int call_return = rpc_call_rhizome(server_sid, rpc_name, paramc, params);
 
         if (call_return == -1) {
 			// If MSP ist not possible, try Rhizome.

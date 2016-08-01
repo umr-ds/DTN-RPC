@@ -1,9 +1,6 @@
 #include <curl/curl.h>
 #include <stddef.h>
 
-#include "rpc_helpers.h"
-#include "cJSON.h"
-
 #include "conf.h"
 #include "dataformats.h"
 #include "mdp_client.h"
@@ -11,11 +8,16 @@
 #include "serval.h"
 #include "server.h"
 
-#define MDP_PORT_RPC_DISCOVER	18
-#define MDP_PORT_RPC_MSP		112
 
 
 // General.
+#define MDP_PORT_RPC_DISCOVER	18
+#define MDP_PORT_RPC_MSP		112
+
+#define RPC_CONF_FILENAME "rpc.conf"
+#define SERVAL_FOLDER "/serval/"
+#define BIN_FOLDER "/serval/rpc_bin/"
+
 #define RPC_PKT_CALL            0
 #define RPC_PKT_CALL_ACK        1
 #define RPC_PKT_CALL_RESPONSE   2
@@ -31,6 +33,10 @@ struct RPCProcedure {
     char **params;
     sid_t caller_sid;
 };
+
+#include "rpc_server.h"
+#include "rpc_helpers.h"
+#include "cJSON.h"
 
 uint8_t *rpc_result[126];
 
