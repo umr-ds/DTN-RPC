@@ -74,7 +74,7 @@ int main (int argc, char **argv) {
 		}
 
 		int ret_code = rpc_call(sid, name, nfields + 1, params);
-		if (ret_code == 0) {
+		if (ret_code == 2) {
 			pinfo("RPC result: %s", (char *) rpc_result);
 			return 0;
 		}

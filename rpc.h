@@ -8,8 +8,6 @@
 #include "serval.h"
 #include "server.h"
 
-
-
 // General.
 #define MDP_PORT_RPC_DISCOVER	18
 #define MDP_PORT_RPC_MSP		112
@@ -38,16 +36,19 @@ struct RPCProcedure {
 #include "rpc_helpers.h"
 #include "cJSON.h"
 
-uint8_t *rpc_result[126];
-
 /**** Server part. ****/
 // At this point only one main listener.
 int rpc_listen ();
 
 /**** Client part. ****/
-// Transparent function.
+int received;
+uint8_t *rpc_result[126];
+
+// Transparent
 int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
-// Direct function.
-int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
-// Delay-tolerant function.
-int rpc_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+// Direct
+int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+// Delay-tolerant (any/direct)
+int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+// Any
+int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const char **params);

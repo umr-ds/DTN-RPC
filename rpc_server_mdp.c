@@ -52,9 +52,7 @@ static int rpc_server_mdp_handle (int mdp_sockfd) {
 		struct RPCProcedure rp = rpc_server_parse_call(payload, len);
 
 		// Check, if we offer this procedure.
-		int ret_code = rpc_server_check_offered(&rp);
-		pdebug("ret_code = %i", ret_code);
-        if (ret_code == 0) {
+        if (rpc_server_check_offered(&rp) == 0) {
             pinfo("Offering desired RPC. Sending ACK.");
             // Compile and send ACK packet.
             uint8_t ack_payload[2];
