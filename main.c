@@ -16,7 +16,7 @@ void _close_keyring () {
     keyring = NULL;
 }
 
-void rpc_server_sig_handler (int signum) {
+void _rpc_server_sig_handler (int signum) {
     pwarn("Caught signal with signum %i. Stopping RPC server.", signum);
     running = 1;
 }
@@ -41,9 +41,18 @@ int main (int argc, char **argv) {
 
 	// This is the server part. We just listen.
 	if (strncmp(argv[1], "listen", strlen("listen")) == 0) {
-    	signal(SIGINT, rpc_server_sig_handler);
-    	signal(SIGTERM, rpc_server_sig_handler);
-		return rpc_listen();
+    	signal(SIGINT, _rpc_server_sig_handler);
+    	signal(SIGTERM, _rpc_server_sig_handler);
+		if (argc == 3) {
+			if (strncasecmp(argv[2], "msp", strlen("msp")) == 0) {
+				return rpc_server_listen_msp();
+			} else if (strncasecmp(argv[2], "mdp", strlen("mdp")) == 0) {
+				return rpc_server_listen_mdp_broadcast();
+			} else if (strncasecmp(argv[2], "rhizome", strlen("rhizome")) == 0) {
+				return rpc_server_listen_rhizome();
+			}
+		}
+		return rpc_server_listen();
 	}
 	else {
 		// Parse params.

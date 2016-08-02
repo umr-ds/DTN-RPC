@@ -2,7 +2,7 @@
 
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
-int rpc_server_check_offered (struct RPCProcedure *rp) {
+int _rpc_server_check_offered (struct RPCProcedure *rp) {
     pinfo("Checking, if \"%s\" is offered.", rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
@@ -41,7 +41,7 @@ int rpc_server_check_offered (struct RPCProcedure *rp) {
 }
 
 // Function to parse the received payload.
-struct RPCProcedure rpc_server_parse_call (const uint8_t *payload, size_t len) {
+struct RPCProcedure _rpc_server_parse_call (const uint8_t *payload, size_t len) {
     pinfo("Parsing call.");
     // Create a new rp struct.
     struct RPCProcedure rp;
@@ -78,7 +78,7 @@ struct RPCProcedure rpc_server_parse_call (const uint8_t *payload, size_t len) {
 }
 
 // Execute the procedure
-int rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
+int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     pinfo("Executing \"%s\".", rp.name);
     FILE *pipe_fp;
 
@@ -122,34 +122,90 @@ int rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 }
 
 // Main listening function.
-int rpc_listen () {
+int rpc_server_listen () {
 	// Setup MDP and MSP.
-    if (rpc_server_msp_setup() == -1) {
+    if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
 		return -1;
 	}
-	if (rpc_server_mdp_setup() == -1) {
+	if (_rpc_server_mdp_setup() == -1) {
 		pfatal("Could not setup MDP listener. Aborting.");
 		return -1;
 	}
-
     // Run RPC server.
     while(running < 2){
         if (running == 1) {
 			// Clean everythin up.
-			rpc_server_msp_cleanup();
-			rpc_server_mdp_cleanup();
+			_rpc_server_msp_cleanup();
+			_rpc_server_mdp_cleanup();
             break;
         }
-
-		// Listen to the three main parts.
-		rpc_server_msp_listen();
-		rpc_server_mdp_listen();
-        if (rpc_server_rhizome_listen() == -1) {
+		// Process the three main parts.
+		_rpc_server_msp_process();
+		_rpc_server_mdp_process();
+        if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
 			running = 1;
 		}
+        // To not drive the CPU crazy, check only once a second for new packets.
+        sleep(1);
+    }
+	return 0;
+}
 
+// MDP listening function.
+int rpc_server_listen_msp () {
+	// Setup MSP.
+    if (_rpc_server_msp_setup() == -1) {
+		pfatal("Could not setup MSP listener. Aborting.");
+		return -1;
+	}
+    // Run RPC server.
+    while(running < 2){
+        if (running == 1) {
+			// Clean everythin up.
+			_rpc_server_msp_cleanup();
+            break;
+        }
+		// Process MSP
+		_rpc_server_msp_process();
+        // To not drive the CPU crazy, check only once a second for new packets.
+        sleep(1);
+    }
+	return 0;
+}
+
+// Rhizome listening function.
+int rpc_server_listen_rhizome () {
+	// Run RPC server.
+    while(running < 2){
+		// Process Rhizome
+        if (_rpc_server_rhizome_process() == -1) {
+			pfatal("Rhizome listening failed. Aborting.");
+			running = 1;
+		}
+        // To not drive the CPU crazy, check only once a second for new packets.
+        sleep(1);
+    }
+	return 0;
+}
+
+// MDP listening function.
+int rpc_server_listen_mdp_broadcast () {
+	// Setup MDP.
+	if (_rpc_server_mdp_setup() == -1) {
+		pfatal("Could not setup MDP listener. Aborting.");
+		return -1;
+	}
+    // Run RPC server.
+    while(running < 2){
+        if (running == 1) {
+			// Clean everythin up.
+			_rpc_server_mdp_cleanup();
+            break;
+        }
+		// Process MDP.
+		_rpc_server_mdp_process();
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }

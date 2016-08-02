@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // Send the result via Rhizome
-int rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint8_t *payload) {
+int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint8_t *payload) {
     int return_code = 1;
 
     // Construct the manifest and write it to the manifest file.
@@ -60,7 +60,7 @@ int rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint8
     return return_code;
 }
 
-int rpc_server_rhizome_listen () {
+int _rpc_server_rhizome_process () {
     int return_code = 0;
 
 	// Init the cURL stuff.
@@ -149,7 +149,7 @@ int rpc_server_rhizome_listen () {
             if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL) {
                 pinfo("Received RPC via Rhizome.");
                 // Parse the payload to the RPCProcedure struct
-                struct RPCProcedure rp = rpc_server_parse_call(recv_payload, filesize);
+                struct RPCProcedure rp = _rpc_server_parse_call(recv_payload, filesize);
         		if (str_to_sid_t(&rp.caller_sid, sender) == -1){
         			pfatal("Could not convert SID to sid_t. Aborting.");
                     return_code = -1;
@@ -157,19 +157,19 @@ int rpc_server_rhizome_listen () {
         		}
 
                 // Check, if we offer this procedure.
-                if (rpc_server_check_offered(&rp) == 0) {
+                if (_rpc_server_check_offered(&rp) == 0) {
                     pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                     // Compile and send ACK packet.
                     uint8_t payload[2];
                     write_uint16(&payload[0], RPC_PKT_CALL_ACK);
-                    rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
+                    _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.
 				    uint8_t result_payload[2 + 127 + 1];
-	                if (rpc_server_excecute(result_payload, rp) == 0) {
+	                if (_rpc_server_excecute(result_payload, rp) == 0) {
 						pinfo("Sending result via Rhizome.");
-        				rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
+        				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
                         pinfo("RPC execution was successful.");
                     }
                 } else {

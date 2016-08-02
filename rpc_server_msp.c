@@ -6,7 +6,7 @@ int mdp_fd_msp;
 struct mdp_sockaddr addr_msp;
 
 // Handler of the RPC server
-size_t rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
+size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
     size_t ret = 0;
 
     // If there is an errer on the socket, stop it.
@@ -22,10 +22,10 @@ size_t rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
             pinfo("Received RPC via MSP.");
             // Parse the payload to the RPCProcedure struct
-            struct RPCProcedure rp = rpc_server_parse_call(payload, len);
+            struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
 
             // Check, if we offer this procedure.
-            if (rpc_server_check_offered(&rp) == 0) {
+            if (_rpc_server_check_offered(&rp) == 0) {
                 pinfo("Offering desired RPC. Sending ACK.");
                 // Compile and send ACK packet.
                 uint8_t ack_payload[2];
@@ -34,7 +34,7 @@ size_t rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t
 
                 // Try to execute the procedure.
 			    uint8_t result_payload[2 + 127 + 1];
-                if (rpc_server_excecute(result_payload, rp) == 0) {
+                if (_rpc_server_excecute(result_payload, rp) == 0) {
 					pinfo("Sending result via MSP.");
         			msp_send(sock, result_payload, sizeof(result_payload));
                     pinfo("RPC execution was successful.");
@@ -53,7 +53,7 @@ size_t rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t
 }
 
 // Setup the MSP part.
-int rpc_server_msp_setup () {
+int _rpc_server_msp_setup () {
 	// Init the address struct and set the sid to a local sid and port where to listen at.
     bzero(&addr_msp, sizeof addr_msp);
     addr_msp.sid = BIND_PRIMARY;
@@ -79,13 +79,13 @@ int rpc_server_msp_setup () {
     msp_listen(sock_msp);
 
     // Set the handler to handle incoming packets.
-    msp_set_handler(sock_msp, rpc_server_msp_handler, NULL);
+    msp_set_handler(sock_msp, _rpc_server_msp_handler, NULL);
 
 	return 0;
 }
 
 // MSP listener.
-void rpc_server_msp_listen () {
+void _rpc_server_msp_process () {
 	// Process MSP socket.
 	msp_processing(&next_time);
 	// Receive the data from the socket.
@@ -93,7 +93,7 @@ void rpc_server_msp_listen () {
 }
 
 // MSP Cleanup.
-void rpc_server_msp_cleanup () {
+void _rpc_server_msp_cleanup () {
 	sock_msp = MSP_SOCKET_NULL;
 	msp_close_all(mdp_fd_msp);
 	mdp_close(mdp_fd_msp);

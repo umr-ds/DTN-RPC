@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // The RPC cliend handler
-size_t rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
+size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
     size_t ret = 0;
 
     // If there is an errer on the socket, stop it.
@@ -64,7 +64,7 @@ int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc
     msp_connect(sock, &addr);
 
     // Set the handler to handle incoming packets.
-    msp_set_handler(sock, rpc_client_msp_handler, NULL);
+    msp_set_handler(sock, _rpc_client_msp_handler, NULL);
 
     char *flat_params = _rpc_flatten_params(paramc, params, "|");
 

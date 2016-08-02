@@ -37,8 +37,14 @@ struct RPCProcedure {
 #include "cJSON.h"
 
 /**** Server part. ****/
-// At this point only one main listener.
-int rpc_listen ();
+// Transparent
+int rpc_server_listen ();
+// Direct
+int rpc_server_listen_msp ();
+// Delay-tolerant
+int rpc_server_listen_rhizome ();
+// MDP
+int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int received;
