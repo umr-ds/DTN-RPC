@@ -85,17 +85,17 @@ int main (int argc, char **argv) {
 			_rpc_print_usage(1, "Too many options.");
 		}
 	} else if (_rpc_check_cli(argv[1], "call", "c")) {
-		int index = 0;
-		if (_rpc_check_cli(argv[2], "-", "-")) {
-			index = 3;
+		int offset = 0;
+		if (strcmp(argv[2], "--") == 0) {
+			offset = 3;
 		} else {
-			index = 4;
+			offset = 4;
 		}
 
 		// Parse params.
-		const char *sidhex = argv[index];
-		const char *name = argv[index + 1];
-		const char *param1 = argv[index + 2];
+		const char *sidhex = argv[offset];
+		const char *name = argv[offset + 1];
+		const char *param1 = argv[offset + 2];
 
 		if (strncmp(sidhex, "any", strlen("any")) == 0) {
 			sidhex = "broadcast";
@@ -107,7 +107,7 @@ int main (int argc, char **argv) {
 		}
 
 		// Get length of additional arguments...
-		unsigned int nfields = (argc == index + 4) ? 0 : argc - (index + 4);
+		unsigned int nfields = argc - (offset + 3);
 		// and create new parameter array of the particular length.
 		const char *params[nfields + 1];
 		params[0] = param1;
@@ -115,7 +115,7 @@ int main (int argc, char **argv) {
 		unsigned int i;
 		for (i = 0; i < nfields; i++) {
 			// Skip to next parameter and save it in params at position i.
-			unsigned int n = nfields + i + 4;
+			unsigned int n = offset + 3 + i;
 			params[i + 1] = argv[n];
 		}
 
@@ -130,7 +130,8 @@ int main (int argc, char **argv) {
 			pinfo("Calling delay-tolerant via Rhizome");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "-", "-")) {
-				ret_code = rpc_call(sid, name, nfields + 1, params);
+			pinfo("Calling transparently.");
+			ret_code = rpc_call(sid, name, nfields + 1, params);
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");
 		}
