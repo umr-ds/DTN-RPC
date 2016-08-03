@@ -1,12 +1,16 @@
-# Serval RPC documentation
+# ServalRPC API documentation
 This documentation provides all needed information to use RPCs via Serval.
 
-## Installation
+## Building
 At this point this software was only tested on macOS El Capitan. This will be changed in future.
 
 There is only one requirement, `libcurl`. On most systems this is already installed.
 
-Just run `make` inside the ServalRPC folder.
+For building ServalRPC run the following commands in the ServalRPC folder:
+```
+./configure
+make
+```
 
 ## Usage
 To use ServalRPC the Serval daemon has to run.
@@ -49,22 +53,52 @@ res=$(( sum1+sum2 ))
 echo "$res"
 exit 0
 ```
+
+#### Listening
+After providing a RPC, the server has to start the listeners. There are 4 listeners.
+
+##### All
+With `int rpc_server_listen ();` the server will listen on all possible connections (MSP, MDP, Rhizome). The result will be returned on the same connection where the call was received. If MSP or MDP is not possible, Rhizome will be used for this.
+
+##### Direct
+With `int rpc_server_listen_msp ();` the server will only listen for direct calls via MSP. The result will be returned via MSP, too. If this is not possible, Rhizome will be used increase the probability that the result arrives at the client.
+
+##### Delay-tolerant
+With `int rpc_server_listen_rhizome ();` the server will only listen for calls arriving via Rhizome. Both is possible, direct and broadcast. The result will only sent back via Rhizome.
+
+##### MDP broadcast
+With `int rpc_server_listen_mdp_broadcast ();` the server will only listen for calls addressed to the broadcast address via MDP. The result will be returned directly (not broadcasted) via MDP. If this is not possible, Rhizome will be used increase the probability that the result arrives at the client.
+
+---
+
+The results are allways end-to-end encrypted, regardless of the chosen way.
+
 __*TODO*: FILEHASH (KOMPLEX)__
 
 ### Client
 To call a RPC there are multiple ways. This could be either *directly*, if a RPC server is known or *any*. The third mode is *transparent*, where the best solution is chosen.
 
 #### Transparent
-The *transparent* mode is called via the function `int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params)`. The `server_sid` is the SID of the server. If the SID is not known, it should be `SID_ANY` or `SID_BROADCAST` (note: if the SID is not known, the mode will be allways *any*). The `rpc_name` has to be the RPC name and the `paramc` is the number of parameters needed. Finally all needed parameters has to be provides as `char **` (Stringarray).
+The *transparent* mode is called via the function `int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params)`. The `server_sid` is the SID of the server. The `rpc_name` has to be the RPC name and the `paramc` is the number of parameters needed. Finally all needed parameters has to be provides as `char **` (array of strings).
 
 If the Server is not available via MSP the procedure will be send via Rhizome.
 
 The result will be always encrypted, regardless of the mode.
 
 #### Direct
-The direct mode is triggert with `int rpc_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params)`. The parameters are the same as above. Note: if the server is not available, the RPC will not be executed. But if the connections gets lost while waiting for the result, the result will be delivered via Rhizome.
+The *direct* mode is triggert with `int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params)`. The parameters are the same as above. Note: if the server is not available, the RPC will not be executed. But if the connections gets lost while waiting for the result, the result will be delivered via Rhizome.
 
-__*TODO*: DIRECT HOP COUNT; FILEHASH (KOMPLEX); WHERE IS THE RESULT?; OTHER MODES__
+#### Any
+With `int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const char **params);` the call will be broadcasted via MDP.
+
+#### Delay-tolerant
+With `int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);` the call will be issued via Rhizome. If you want to broadcast the call via Rhizome, set the `sid` to `SID_BROADCAST`.
+
+---
+
+The result will be stored in `rpc_result`, which is an `\0` terminated array of type `uint8_t`.
+
+__*TODO*: FILEHASH (KOMPLEX);__
 
 ### Caveats
 At this point the Serval Keyring has to be unencrypted. Furthermore, the credentials for the RESTful API are __RPC__ (username) and __SRPC__ (password).
