@@ -135,7 +135,7 @@ int main (int argc, char **argv) {
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "-", "-")) {
 			pinfo("Client mode: Transparent.");
-			ret_code = rpc_call(sid, name, nfields + 1, params);
+			ret_code = rpc_client_call(sid, name, nfields + 1, params);
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");
 		}

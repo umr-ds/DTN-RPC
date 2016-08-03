@@ -8,6 +8,10 @@
 #include "serval.h"
 #include "server.h"
 
+#include "rpc_server.h"
+#include "rpc_helpers.h"
+#include "cJSON.h"
+
 // General.
 #define MDP_PORT_RPC_DISCOVER	18
 #define MDP_PORT_RPC_MSP		112
@@ -19,22 +23,6 @@
 #define RPC_PKT_CALL            0
 #define RPC_PKT_CALL_ACK        1
 #define RPC_PKT_CALL_RESPONSE   2
-
-struct ParamRepr {
-	uint16_t paramc_n;
-	char *paramc_s;
-};
-
-struct RPCProcedure {
-    char *name;
-    struct ParamRepr paramc;
-    char **params;
-    sid_t caller_sid;
-};
-
-#include "rpc_server.h"
-#include "rpc_helpers.h"
-#include "cJSON.h"
 
 /**** Server part. ****/
 // Transparent
@@ -51,7 +39,7 @@ int received;
 uint8_t *rpc_result[126];
 
 // Transparent
-int rpc_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
+int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
 // Direct
 int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
 // Delay-tolerant (any/direct)

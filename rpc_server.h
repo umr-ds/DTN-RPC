@@ -1,5 +1,18 @@
 // General server.
+struct ParamRepr {
+	uint16_t paramc_n;
+	char *paramc_s;
+};
+
+struct RPCProcedure {
+    char *name;
+    struct ParamRepr paramc;
+    char **params;
+    sid_t caller_sid;
+};
+
 int running;
+
 
 int _rpc_server_check_offered (struct RPCProcedure *rp);
 int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp);
