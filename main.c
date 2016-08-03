@@ -24,15 +24,15 @@ void _rpc_server_sig_handler (int signum) {
 void _rpc_print_usage (int mode, char *reason) {
 	switch (mode) {
 		case 1:
-			pfatal("%s\nUsage (server): ./servalrpc (--listen | -l) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)]", reason);
+			pfatal("%s\nUsage (server): ./servalrpc -l [-s | -d | -r]\nSee reference_implementation.md for more information.", reason);
 			break;
 		case 2:
-			pfatal("%s\nUsage (client): ./servalrpc (--call | -c) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]", reason);
+			pfatal("%s\nUsage (client): ./servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]\nSee reference_implementation.md for more information.", reason);
 			break;
 		default:
 			pfatal( "%s\n"
-					"Usage (server): ./servalrpc (--listen | -l) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)]\n"
-					"Usage (client): ./servalrpc (--call | -c) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]",
+					"Usage (server): ./servalrpc -l [-s | -d | -r]\n"
+					"Usage (client): ./servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]\nSee reference_implementation.md for more information.",
 					reason
 			);
 	}
@@ -125,19 +125,26 @@ int main (int argc, char **argv) {
 
 		int ret_code = -1;
 		if (_rpc_check_cli(argv[2], "msp", "s")) {
+			if (is_sid_t_broadcast(sid)) {
+				pfatal("Can not broadcast via MSP. Aborting.");
+				return -1;
+			}
 			pinfo("Client mode: MSP (direct)");
 			ret_code = rpc_client_call_msp(sid, name, nfields + 1, params);
-		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
-			pinfo("Client mode: MDP (broadcasts)");
-			ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
-		} else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
+		}  else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "-", "-")) {
-			pinfo("Client mode: Transparent.");
-			ret_code = rpc_client_call(sid, name, nfields + 1, params);
+			if (is_sid_t_broadcast(sid)) {
+				pinfo("Client mode: MDP (broadcasts)");
+				ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
+			} else {
+				pinfo("Client mode: Transparent.");
+				ret_code = rpc_client_call(sid, name, nfields + 1, params);
+			}
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");
+			return -1;
 		}
 
 		if (ret_code == 2) {
