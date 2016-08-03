@@ -18,11 +18,19 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
     // Construct the manifest and write it to the manifest file.
-    int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
-    char manifest_str[manifest_size];
-    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
-    char tmp_manifest_file_name[L_tmpnam];
-    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+	char tmp_manifest_file_name[L_tmpnam];
+	if (is_sid_t_broadcast(sid)) {
+		int manifest_size = strlen("service=RPC\nname=\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
+		char manifest_str[manifest_size];
+		sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid));
+		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+	} else {
+		int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
+	    char manifest_str[manifest_size];
+	    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+	    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+	}
+
 
     // Init the cURL stuff.
     CURL *curl_handler = NULL;

@@ -117,7 +117,14 @@ int _rpc_server_rhizome_process () {
 
         // Check, if this file is an RPC packet and if it is not from but for the client.
         int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
-        int not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+		int not_my_file = 0;
+		if (recipient) {
+        	not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+		} else {
+			not_my_file = 1;
+		}
+
+		pdebug("Recipient: %i", not_my_file);
 
         // If this is an interesting file: handle it.
         if (service_is_rpc  && not_my_file) {
