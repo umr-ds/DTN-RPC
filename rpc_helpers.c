@@ -5,7 +5,7 @@ char* _rpc_flatten_params (const int paramc, const char **params, const char *de
     // Determine how many chars are there.
     size_t params_size = 0;
     int i;
-    for (i = 0; i < paramc; i++){
+    for (i = 0; i < paramc; i++) {
         params_size = params_size + strlen(params[i]);
     }
 
@@ -31,7 +31,7 @@ uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const ch
         memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params));
         // Make sure there is a string terminater. Makes it easier to parse on server side.
         memcpy(&payload[4 + strlen(rpc_name) + strlen(flat_params)], "\0", 1);
-        
+
         return payload;
 }
 

@@ -13,7 +13,7 @@ int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const
 	mdp_header.remote.sid = BIND_ALL;
 	mdp_header.remote.port = MDP_PORT_RPC_DISCOVER;
 
-	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0){
+	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0) {
 		pfatal("Could not bind to broadcast address.");
 		return -1;
 	}
@@ -23,7 +23,7 @@ int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const
 	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
     _rpc_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
-	if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0){
+	if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0) {
 		pfatal("Could not discover packet. Aborting.");
 		return -1;
 	}
@@ -38,7 +38,7 @@ int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const
         poll(fds, 1, 500);
 
         // If something arrived, receive it.
-        if (fds->revents & POLLIN){
+        if (fds->revents & POLLIN) {
 			struct mdp_header mdp_recv_header;
 			uint8_t recv_payload[1200];
 			ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));

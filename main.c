@@ -24,15 +24,15 @@ void _rpc_server_sig_handler (int signum) {
 void _rpc_print_usage (int mode, char *reason) {
 	switch (mode) {
 		case 1:
-			pfatal("%s\nUsage (server): ./servalrpc (--listen | -l) [(--msp | -1) | (--mdp | -2) | (--rhizome | -3)]", reason);
+			pfatal("%s\nUsage (server): ./servalrpc (--listen | -l) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)]", reason);
 			break;
 		case 2:
-			pfatal("%s\nUsage (client): ./servalrpc (--call | -c) [(--msp | -1) | (--mdp | -2) | (--rhizome | -3)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]", reason);
+			pfatal("%s\nUsage (client): ./servalrpc (--call | -c) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]", reason);
 			break;
 		default:
 			pfatal( "%s\n"
-					"Usage (server): ./servalrpc (--listen | -l) [(--msp | -1) | (--mdp | -2) | (--rhizome | -3)]\n"
-					"Usage (client): ./servalrpc (--call | -c) [(--msp | -1) | (--mdp | -2) | (--rhizome | -3)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]",
+					"Usage (server): ./servalrpc (--listen | -l) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)]\n"
+					"Usage (client): ./servalrpc (--call | -c) [(--msp | -s) | (--mdp | -d) | (--rhizome | -r)] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]",
 					reason
 			);
 	}
@@ -69,17 +69,21 @@ int main (int argc, char **argv) {
     	signal(SIGINT, _rpc_server_sig_handler);
     	signal(SIGTERM, _rpc_server_sig_handler);
 		if (argc == 3) {
-			if (_rpc_check_cli(argv[2], "msp", "1")) {
+			if (_rpc_check_cli(argv[2], "msp", "s")) {
+				pinfo("Server mode: MSP");
 				return rpc_server_listen_msp();
-			} else if (_rpc_check_cli(argv[2], "mdp", "2")) {
+			} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
+				pinfo("Server mode: MDP");
 				return rpc_server_listen_mdp_broadcast();
-			} else if (_rpc_check_cli(argv[2], "rhizome", "3")) {
+			} else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
+				pinfo("Server mode: Rhizome");
 				return rpc_server_listen_rhizome();
 			} else {
 				_rpc_print_usage(1, "Unrecognized option.");
 				return -1;
 			}
 		} else if (argc == 2) {
+			pinfo("Server mode: All");
 			return rpc_server_listen();
 		} else {
 			_rpc_print_usage(1, "Too many options.");
@@ -101,7 +105,7 @@ int main (int argc, char **argv) {
 			sidhex = "broadcast";
 		}
 		sid_t sid;
-		if (str_to_sid_t(&sid, sidhex) == -1){
+		if (str_to_sid_t(&sid, sidhex) == -1) {
 			pfatal("Could not convert SID to sid_t. Aborting.");
 			return -1;
 		}
@@ -120,17 +124,17 @@ int main (int argc, char **argv) {
 		}
 
 		int ret_code = -1;
-		if (_rpc_check_cli(argv[2], "msp", "1")) {
-			pinfo("Calling directly via MSP");
+		if (_rpc_check_cli(argv[2], "msp", "s")) {
+			pinfo("Client mode: MSP (direct)");
 			ret_code = rpc_client_call_msp(sid, name, nfields + 1, params);
-		} else if (_rpc_check_cli(argv[2], "mdp", "2")) {
-			pinfo("Calling via MDP broadcasts");
+		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
+			pinfo("Client mode: MDP (broadcasts)");
 			ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
-		} else if (_rpc_check_cli(argv[2], "rhizome", "3")) {
-			pinfo("Calling delay-tolerant via Rhizome");
+		} else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
+			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "-", "-")) {
-			pinfo("Calling transparently.");
+			pinfo("Client mode: Transparent.");
 			ret_code = rpc_call(sid, name, nfields + 1, params);
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");

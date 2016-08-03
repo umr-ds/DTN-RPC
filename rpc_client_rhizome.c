@@ -140,7 +140,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
             uint8_t recv_payload[filesize];
             memcpy(recv_payload, curl_result_memory.memory, filesize);
 
-            if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK){
+            if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
                 // If we got an ACK packet, we wait (for now) 5 more seconds.
                 pinfo("Received ACK via Rhizome. Waiting.");
 				return_code = 1;

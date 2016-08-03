@@ -133,7 +133,7 @@ int rpc_server_listen () {
 		return -1;
 	}
     // Run RPC server.
-    while(running < 2){
+    while (running < 2) {
         if (running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
@@ -161,13 +161,13 @@ int rpc_server_listen_msp () {
 		return -1;
 	}
     // Run RPC server.
-    while(running < 2){
+    while (running < 2) {
         if (running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
             break;
         }
-		// Process MSP
+		// Process MSP.
 		_rpc_server_msp_process();
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
@@ -178,7 +178,7 @@ int rpc_server_listen_msp () {
 // Rhizome listening function.
 int rpc_server_listen_rhizome () {
 	// Run RPC server.
-    while(running < 2){
+    while (running < 1) {
 		// Process Rhizome
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
@@ -198,7 +198,7 @@ int rpc_server_listen_mdp_broadcast () {
 		return -1;
 	}
     // Run RPC server.
-    while(running < 2){
+    while (running < 2) {
         if (running == 1) {
 			// Clean everythin up.
 			_rpc_server_mdp_cleanup();

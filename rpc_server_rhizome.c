@@ -150,7 +150,7 @@ int _rpc_server_rhizome_process () {
                 pinfo("Received RPC via Rhizome.");
                 // Parse the payload to the RPCProcedure struct
                 struct RPCProcedure rp = _rpc_server_parse_call(recv_payload, filesize);
-        		if (str_to_sid_t(&rp.caller_sid, sender) == -1){
+        		if (str_to_sid_t(&rp.caller_sid, sender) == -1) {
         			pfatal("Could not convert SID to sid_t. Aborting.");
                     return_code = -1;
                     goto clean_rhizome_server_listener_all;

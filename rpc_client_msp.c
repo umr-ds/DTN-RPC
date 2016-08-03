@@ -84,7 +84,7 @@ int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc
     time_t timeout = time(NULL);
 
     // While we have not received the answer...
-    while(received == 0 || received == 1){
+    while (received == 0 || received == 1) {
         // Process MSP socket
         time_ms_t next_time;
         msp_processing(&next_time);
@@ -99,7 +99,7 @@ int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc
         poll(fds, 1, poll_timeout);
 
         // If something arrived, receive it.
-        if (fds->revents & POLLIN){
+        if (fds->revents & POLLIN) {
             msp_recv(mdp_fd);
         }
     }

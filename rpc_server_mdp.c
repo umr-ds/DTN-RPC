@@ -17,7 +17,7 @@ int _rpc_server_mdp_setup () {
 	mdp_addr.port = MDP_PORT_RPC_DISCOVER;
 
 	// Bind to the open socket.
-	if (mdp_bind(mdp_sock, &mdp_addr) < 0){
+	if (mdp_bind(mdp_sock, &mdp_addr) < 0) {
 		pfatal("Could not bind to broadcast address.");
 		return -1;
 	}
@@ -80,7 +80,7 @@ void _rpc_server_mdp_process () {
 	poll(mdp_poll_fd, 1, 500);
 
 	// If we have some data, handle the data.
-	if (mdp_poll_fd->revents & POLLIN){
+	if (mdp_poll_fd->revents & POLLIN) {
 		_rpc_server_mdp_handle(mdp_sock);
 	}
 }
