@@ -11,7 +11,7 @@ LDFLAGS = -L. -lservalrpc -lcurl @LDFLAGS@ @LIBS@
 # Set CFLAGS procramatically
 CFLAGS = @CFLAGS@
 # Include search paths
-CFLAGS += -Iserval/general -Iserval/sqlite -Iserval/nacl
+CFLAGS += -Iserval/sqlite -Iserval/nacl
 # sysconfdir definition
 CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\""
 # Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.

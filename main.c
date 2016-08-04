@@ -157,4 +157,5 @@ int main (int argc, char **argv) {
 		_rpc_print_usage(0, "Unrecognized option.");
 	}
     _close_keyring();
+    return -1;
 }

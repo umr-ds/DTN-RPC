@@ -8,11 +8,11 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
     int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
     char manifest_str[manifest_size];
     sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
-    char tmp_manifest_file_name[L_tmpnam];
+    char tmp_manifest_file_name[] = "/tmp/mfXXXXXX";
     _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 
     // Write the payload to the payload file.
-    char tmp_payload_file_name[L_tmpnam];
+    char tmp_payload_file_name[] = "/tmp/plXXXXXX";
     _rpc_write_tmp_file(tmp_payload_file_name, payload, 130);
 
     // Init the cURL stuff.

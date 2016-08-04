@@ -6,9 +6,13 @@ AC_PROG_CC
 
 dnl Various GCC function and variable attributes
 AX_GCC_FUNC_ATTRIBUTE(aligned)
+AX_GCC_FUNC_ATTRIBUTE(alloc_size)
+AX_GCC_FUNC_ATTRIBUTE(error)
+AX_GCC_FUNC_ATTRIBUTE(format)
+AX_GCC_FUNC_ATTRIBUTE(malloc)
 AX_GCC_FUNC_ATTRIBUTE(unused)
 AX_GCC_FUNC_ATTRIBUTE(used)
-AX_GCC_VAR_ATTRIBUTE(section_seg)
+AX_GCC_VAR_ATTRIBUTE(section)
 
 AC_CHECK_FUNCS([bcopy bzero bcmp])
 AC_CHECK_SIZEOF([off_t])
@@ -19,22 +23,22 @@ AS_IF([test "x$have_lseek64_t" = "xno" -a "x$ac_cv_sizeof_off_t" != x8 ], [
 ])
 
 AC_CHECK_HEADERS(
-		curl/curl.h \
-		stddef.h \
-		stdint.h \
-		tdio.h \
-		errno.h \
-		stdlib.h \
-		stdarg.h \
-		sys/types.h \
-		linux/if.h \
-		ctype.h \
-		fcntl.h \
-		inttypes.h \
-		limits.h \
-		jni.h \
-		alloca.h \
-		sys/un.h \
+    curl/curl.h \
+	stddef.h \
+	stdint.h \
+	stdio.h \
+	errno.h \
+	stdlib.h \
+	stdarg.h \
+	sys/types.h \
+	linux/if.h \
+	ctype.h \
+	fcntl.h \
+	inttypes.h \
+	limits.h \
+	jni.h \
+	alloca.h \
+	sys/un.h \
     strings.h \
     unistd.h \
     string.h \
@@ -45,6 +49,7 @@ AC_CHECK_HEADERS(
     sys/ucred.h \
     sys/stat.h \
     sys/vfs.h \
+    signal.h \
     poll.h \
     netdb.h \
     linux/netlink.h \
@@ -58,6 +63,11 @@ AC_CHECK_HEADERS(
 
 dnl Lazy way of checking for Linux
 AS_IF([test "x$ac_cv_header_linux_if_h" = xyes], [AC_DEFINE([USE_ABSTRACT_NAMESPACE])])
+
+AC_CHECK_LIB(m,sqrtf,[LDFLAGS="$LDFLAGS -lm"])
+AC_CHECK_LIB(nsl,callrpc,[LDFLAGS="$LDFLAGS -lnsl"])
+AC_CHECK_LIB(socket,socket,[LDFLAGS="$LDFLAGS -lsocket"])
+AC_CHECK_LIB(dl,dlopen,[LDFLAGS="$LDFLAGS -ldl"])
 
 AC_CACHE_CHECK([linker -z relro option], libc_cv_z_relro, [dnl
   libc_cv_z_relro=no
