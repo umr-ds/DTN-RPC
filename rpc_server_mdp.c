@@ -50,6 +50,10 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 		pinfo("Received RPC call via MDP broadcast.");
 		// Parse the payload to the RPCProcedure struct
 		struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
+		if (str_to_sid_t(&rp.caller_sid, sender) == -1) {
+			pfatal("Could not convert SID to sid_t. Aborting.");
+			return -1;
+		}
 
 		// Check, if we offer this procedure.
         if (_rpc_server_check_offered(&rp) == 0) {

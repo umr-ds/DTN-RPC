@@ -23,6 +23,10 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
             pinfo("Received RPC via MSP.");
             // Parse the payload to the RPCProcedure struct
             struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
+			if (str_to_sid_t(&rp.caller_sid, sender) == -1) {
+				pfatal("Could not convert SID to sid_t. Aborting.");
+				return len;
+			}
 
             // Check, if we offer this procedure.
             if (_rpc_server_check_offered(&rp) == 0) {
