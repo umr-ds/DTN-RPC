@@ -22,8 +22,11 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
             pinfo("Received RPC via MSP.");
             // Parse the payload to the RPCProcedure struct
+			struct mdp_sockaddr addr;
+		    bzero(&addr, sizeof addr);
+			msp_get_remote(sock, &addr);
             struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
-			if (str_to_sid_t(&rp.caller_sid, sender) == -1) {
+			if (str_to_sid_t(&rp.caller_sid, alloca_tohex_sid_t(addr.sid)) == -1) {
 				pfatal("Could not convert SID to sid_t. Aborting.");
 				return len;
 			}
