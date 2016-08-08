@@ -48,11 +48,10 @@ size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
     return written_size;
 }
 
-
-
+// Function for adding a file to the Rhizome store for complex RPC part.
 int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_name, const char *filepath) {
 	int result = 0;
-    // Construct the manifest and write it to the manifest file.
+    // Construct the manifest and write it to the manifest file. We have to treat it differently if the call is braodcasted.
 	char tmp_manifest_file_name[L_tmpnam];
 	if (is_sid_t_broadcast(sid)) {
 		int manifest_size = strlen("service=RPC\nname=f_\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
@@ -99,8 +98,10 @@ int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_nam
         goto clean_rhizome_insert_all;
     }
 
-	char *test = &strrchr((char *) curl_result_memory.memory, '=')[1];
-	memcpy(filehash, test, 128);
+	// Search for the last '=' and skip it to get the filehash.
+	char *response_filehash = &strrchr((char *) curl_result_memory.memory, '=')[1];
+	// Store the filehash in the variable and make sure it is \0 terminated.
+	memcpy(filehash, response_filehash, 128);
 	memcpy(&filehash[128], "\0", 1);
 
     // Clean up.

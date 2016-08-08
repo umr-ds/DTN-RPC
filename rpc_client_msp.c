@@ -1,6 +1,6 @@
 #include "rpc.h"
 
-// The RPC cliend handler
+// The RPC client handler
 size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
     size_t ret = 0;
 

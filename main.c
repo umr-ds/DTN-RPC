@@ -16,11 +16,13 @@ void _close_keyring () {
     keyring = NULL;
 }
 
+// Signalhandler for stopping the server on ctrl-c
 void _rpc_server_sig_handler (int signum) {
     pwarn("Caught signal with signum %i. Stopping RPC server.", signum);
     running = 1;
 }
 
+// Simple usage method
 void _rpc_print_usage (int mode, char *reason) {
 	switch (mode) {
 		case 1:
@@ -38,11 +40,13 @@ void _rpc_print_usage (int mode, char *reason) {
 	}
 }
 
+// Very basic commandline parser
 int _rpc_check_cli (char *arg, char *option, char *abbrev) {
 	char lng_option[2 + strlen(option)];
 	sprintf(lng_option, "--%s", option);
 	char lng_abbrev[1 + strlen(abbrev)];
 	sprintf(lng_abbrev, "-%s", abbrev);
+	// Check if arg is --<option> or -<abbrev>
 	int option_res = strncmp(arg, lng_option, strlen(lng_option)) == 0;
 	int abbrev_res = strncmp(arg, lng_abbrev, strlen(lng_abbrev)) == 0;
 
@@ -56,7 +60,7 @@ int main (int argc, char **argv) {
 		return -1;
 	}
 
-	// Make sure all required params are set.
+	// Make sure that at least one param is set.
 	if (argc < 2) {
 		_rpc_print_usage(0, "Not enough arguments!");
 		return -1;
@@ -64,10 +68,11 @@ int main (int argc, char **argv) {
 
     _open_keyring();
 
-	// This is the server part. We just listen.
+	// This is the server part.
 	if (_rpc_check_cli(argv[1], "listen", "l")) {
     	signal(SIGINT, _rpc_server_sig_handler);
     	signal(SIGTERM, _rpc_server_sig_handler);
+		// If there are more params than just listen.
 		if (argc == 3) {
 			if (_rpc_check_cli(argv[2], "msp", "s")) {
 				pinfo("Server mode: MSP");
@@ -88,7 +93,10 @@ int main (int argc, char **argv) {
 		} else {
 			_rpc_print_usage(1, "Too many options.");
 		}
-	} else if (_rpc_check_cli(argv[1], "call", "c")) {
+	}
+	// Client part.
+	else if (_rpc_check_cli(argv[1], "call", "c")) {
+		// Get the index of the '--' seperator
 		int offset = 0;
 		if (strcmp(argv[2], "--") == 0) {
 			offset = 3;
@@ -101,6 +109,8 @@ int main (int argc, char **argv) {
 		const char *name = argv[offset + 1];
 		const char *param1 = argv[offset + 2];
 
+		// Serval has a function, where the string "broadcast" gets parsed to SID_BROADCAST.
+		// If we get the string "any", we set it to "braodcast" and let Serval do the rest.
 		if (strncmp(sidhex, "any", strlen("any")) == 0) {
 			sidhex = "broadcast";
 		}
@@ -134,7 +144,9 @@ int main (int argc, char **argv) {
 		}  else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
-		} else if (_rpc_check_cli(argv[2], "-", "-")) {
+		}
+		// From here the RPC gets parsed.
+		else if (_rpc_check_cli(argv[2], "-", "-")) {
 			if (is_sid_t_broadcast(sid)) {
 				pinfo("Client mode: MDP (broadcasts)");
 				ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);

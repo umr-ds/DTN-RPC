@@ -18,6 +18,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
     // Construct the manifest and write it to the manifest file.
+	// We have to treat it differently if the call should be braodcasted. In this case no recipient is required.
 	char tmp_manifest_file_name[L_tmpnam];
 	if (is_sid_t_broadcast(sid)) {
 		int manifest_size = strlen("service=RPC\nname=\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));

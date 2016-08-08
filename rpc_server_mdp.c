@@ -14,7 +14,7 @@ int _rpc_server_mdp_setup () {
 
 	// Set address (SID) and port (MDP port).
 	mdp_addr.sid = BIND_PRIMARY;
-	mdp_addr.port = MDP_PORT_RPC_DISCOVER;
+	mdp_addr.port = MDP_PORT_RPC;
 
 	// Bind to the open socket.
 	if (mdp_bind(mdp_sock, &mdp_addr) < 0) {
@@ -42,7 +42,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 		return -1;
 	}
 
-	// At this point the header is constucted so we can set out address for replies.
+	// At this point the header is constucted so we can set our address for replies.
 	header.local.sid = my_subscriber->sid;
 
 	// If the packet is a RPC call, handle it.

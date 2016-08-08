@@ -60,6 +60,7 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
     return return_code;
 }
 
+// Rhizome server processing.
 int _rpc_server_rhizome_process () {
     int return_code = 0;
 
@@ -193,6 +194,7 @@ int _rpc_server_rhizome_process () {
     return return_code;
 }
 
+// Download file if it is an complex RPC.
 int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *client_sid) {
     int return_code = 0;
 
@@ -241,21 +243,23 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
             goto clean_rhizome_server_listener_all;
         }
 
-		char rpc_cmp_name[2 + strlen(rpc_name)];
-		sprintf(rpc_cmp_name, "f_%s", rpc_name);
-
 		int i;
 		for (i = 0; i < num_rows; i++) {
 	        // ... consider only the recent file, ...
 	        cJSON *recent_file = cJSON_GetArrayItem(rows, i);
 	        // ... get the 'service', ...
 	        char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+			// ... the insert time.
+	        int64_t in_time = (int64_t) cJSON_GetArrayItem(recent_file, 4)->valuedouble;
 	        // ... the sender from the recent file.
 	        char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
 	        // ... the recipient from the recent file.
 	        char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 	        // ... the recipient from the recent file.
 	        char *name = cJSON_GetArrayItem(recent_file, 13)->valuestring;
+
+			char rpc_cmp_name[4 + strlen(rpc_name)];
+			sprintf(rpc_cmp_name, "f_%s", rpc_name);
 
 	        // Check, if this file is an RPC packet and if it is not from but for the client.
 	        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
@@ -282,9 +286,13 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
 	            curl_slist_free_all(header);
 	            header = NULL;
 
-				char filename[strlen("/Users/Artur/Desktop/") + strlen(rpc_cmp_name)];
-				sprintf(filename, "/Users/Artur/Desktop/%s", rpc_cmp_name);
-				FILE* rpc_file = fopen(filename, "w");
+				char rpc_down_name[4 + strlen(rpc_name) + sizeof(in_time) + sizeof(sender)];
+				sprintf(rpc_down_name, "f_%s_%lli_%s", rpc_name, in_time, sender);
+
+				char filepath[strlen(RPC_TMP_FOLDER) + strlen(rpc_down_name)];
+				sprintf(filepath, "%s%s", RPC_TMP_FOLDER, rpc_down_name);
+				mkdir(RPC_TMP_FOLDER, 0700);
+				FILE* rpc_file = fopen(filepath, "w");
 
 	            // Get the bundle ID of the file which should be decrypted.
 	            char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
@@ -303,7 +311,7 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
 	                goto clean_rhizome_server_listener_all;
 	            }
 				fclose(rpc_file);
-				strcpy(fpath, filename);
+				strcpy(fpath, filepath);
 				return_code = 0;
 				break;
 	        }

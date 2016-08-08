@@ -12,11 +12,12 @@
 #include "rpc_helpers.h"
 #include "cJSON.h"
 
-// General.
-#define MDP_PORT_RPC_DISCOVER	18
+/**** General. ****/
+#define MDP_PORT_RPC	18
 #define MDP_PORT_RPC_MSP		112
 
 #define RPC_CONF_FILENAME "rpc.conf"
+#define RPC_TMP_FOLDER "/tmp/rpc_tmp/"
 #define SERVAL_FOLDER "/serval/"
 #define BIN_FOLDER "/serval/rpc_bin/"
 

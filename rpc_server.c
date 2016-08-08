@@ -88,9 +88,10 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 
 	// Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
 	// we have to compile the bin with all parameters from the struct.
+	// If this is an complex call, we have to donwload the file form the store and replace the hash with the path to the file.
 	int param_is_filehash = strcmp(rp.params[0], "filehash") == 0;
 	if (param_is_filehash) {
-		char fpath[strlen("/Users/Artur/Desktop/") + strlen(rp.name) + 3];
+		char fpath[128 + strlen(rp.name) + 3];
 		while (_rpc_server_rhizome_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0);
 
 		free(rp.params[1]);
@@ -124,14 +125,8 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
         }
         pinfo("Returned result from Binary.");
     } else {
-		if (param_is_filehash) {
-			remove(rp.params[1]);
-		}
         return -1;
     }
-	if (param_is_filehash) {
-		remove(rp.params[1]);
-	}
     return 0;
 }
 
