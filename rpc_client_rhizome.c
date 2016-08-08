@@ -4,16 +4,34 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     int return_code = -1;
 	received = 0;
 
-    // Flatten the params.
-    char *payload_flat_params = _rpc_flatten_params(paramc, params, "|");
+	// Flatten the params.
+	char *flat_params;
+	if (strncmp(params[0], "filehash", strlen("filehash")) == 0 && paramc >= 2) {
+		// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
+		char filehash[129];
+		_rpc_add_file_to_store(filehash, SID_BROADCAST, rpc_name, params[1]);
+
+		char *new_params[paramc];
+		new_params[0] = (char *) params[0];
+		new_params[1] = filehash;
+
+		int i;
+		for (i = 2; i < paramc; i++) {
+			new_params[i] = (char *) params[i];
+		}
+
+		flat_params = _rpc_flatten_params(paramc, (const char **) new_params, "|");
+	} else {
+		flat_params = _rpc_flatten_params(paramc, params, "|");
+	}
 
     // Construct the payload and write it to the payload file.
     // |------------------------|-------------------|----------------------------|--------------------------|
     // |-- 2 byte packet type --|-- 2 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
     // |------------------------|-------------------|----------------------------|--------------------------|
     // One extra byte for string termination.
-    uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(payload_flat_params) + 1];
-    _rpc_prepare_call_payload(payload, paramc, rpc_name, payload_flat_params);
+    uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+    _rpc_prepare_call_payload(payload, paramc, rpc_name, flat_params);
     char tmp_payload_file_name[L_tmpnam];
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
