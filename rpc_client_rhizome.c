@@ -62,7 +62,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (post): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (post Rhizome call): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_client_call_all;
     }
@@ -98,7 +98,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
         // Get the bundlelist.
         curl_res = curl_easy_perform(curl_handler);
         if (curl_res != CURLE_OK) {
-            pfatal("CURL failed (get): %s. Aborting.", curl_easy_strerror(curl_res));
+            pfatal("CURL failed (get Rhizome call): %s. Aborting.", curl_easy_strerror(curl_res));
             return_code = -1;
             goto clean_rhizome_client_call_all;
         }
@@ -139,7 +139,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
             // Decrypt the file.
             curl_res = curl_easy_perform(curl_handler);
             if (curl_res != CURLE_OK) {
-                pfatal("CURL failed (decrypt): %s.", curl_easy_strerror(curl_res));
+                pfatal("CURL failed (decrypt Rhizome call): %s.", curl_easy_strerror(curl_res));
                 return_code = -1;
                 goto clean_rhizome_client_call_all;
             }

@@ -93,7 +93,7 @@ int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_nam
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (post): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (post add file): %s. Aborting.", curl_easy_strerror(curl_res));
         result = -1;
         goto clean_rhizome_insert_all;
     }

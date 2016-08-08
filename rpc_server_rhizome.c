@@ -43,7 +43,7 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (post): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (post server result): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_response_all;
     }
@@ -87,7 +87,7 @@ int _rpc_server_rhizome_process () {
     // Get the bundlelist.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (get): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (get server process): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_listener_all;
     }
@@ -142,7 +142,7 @@ int _rpc_server_rhizome_process () {
             // Decrypt the file.
             curl_res = curl_easy_perform(curl_handler);
             if (curl_res != CURLE_OK) {
-                pfatal("CURL failed (decrypt): %s.", curl_easy_strerror(curl_res));
+                pfatal("CURL failed (decrypt server process): %s.", curl_easy_strerror(curl_res));
                 return_code = -1;
                 goto clean_rhizome_server_listener_all;
             }
@@ -221,7 +221,7 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
     // Get the bundlelist.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (get): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (get server download file): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_listener_all;
     }
@@ -306,7 +306,7 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
 	            // Decrypt the file.
 	            curl_res = curl_easy_perform(curl_handler);
 	            if (curl_res != CURLE_OK) {
-	                pfatal("CURL failed (decrypt): %s.", curl_easy_strerror(curl_res));
+	                pfatal("CURL failed (decrypt server download file): %s.", curl_easy_strerror(curl_res));
 	                return_code = -1;
 	                goto clean_rhizome_server_listener_all;
 	            }
@@ -323,6 +323,5 @@ int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *
     clean_rhizome_server_listener:
         _rpc_curl_free_memory(&curl_result_memory);
 
-	pdebug("Name: %s", rpc_name);
     return return_code;
 }

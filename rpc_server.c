@@ -92,7 +92,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 	int param_is_filehash = strcmp(rp.params[0], "filehash") == 0;
 	if (param_is_filehash) {
 		char fpath[128 + strlen(rp.name) + 3];
-		while (_rpc_server_rhizome_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0);
+		while (_rpc_server_rhizome_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
 
 		free(rp.params[1]);
 		rp.params[1] = calloc(strlen(fpath) + 1, sizeof(char));

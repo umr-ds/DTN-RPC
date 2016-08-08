@@ -66,7 +66,27 @@ int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc
     // Set the handler to handle incoming packets.
     msp_set_handler(sock, _rpc_client_msp_handler, NULL);
 
-    char *flat_params = _rpc_flatten_params(paramc, params, "|");
+	// Flatten the params for serialization.
+	char *flat_params;
+	// If the first parameter is filehash, we have to handle them seperately.
+	if (strncmp(params[0], "filehash", strlen("filehash")) == 0 && paramc >= 2) {
+		// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
+		char filehash[129];
+		_rpc_add_file_to_store(filehash, sid, rpc_name, params[1]);
+
+		char *new_params[paramc];
+		new_params[0] = (char *) params[0];
+		new_params[1] = filehash;
+
+		int i;
+		for (i = 2; i < paramc; i++) {
+			new_params[i] = (char *) params[i];
+		}
+
+		flat_params = _rpc_flatten_params(paramc, (const char **) new_params, "|");
+	} else {
+		flat_params = _rpc_flatten_params(paramc, params, "|");
+	}
 
     // Construct the payload and write it to the payload file.
     // |------------------------|-------------------|----------------------------|--------------------------|
