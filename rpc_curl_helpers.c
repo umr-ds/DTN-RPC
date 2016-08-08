@@ -22,6 +22,11 @@ size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *us
     return realsize;
 }
 
+// Function to store results of curl calls (if not free'd manually, all responses are stored consecutively).
+size_t _rpc_curl_write_to_file (void *contents, size_t size, size_t nmemb, FILE *dst_file) {
+    size_t written = fwrite(contents, size, nmemb, dst_file);
+    return written;
+}
 // Init memory where cURL results are written.
 void _curl_init_memory (struct CurlResultMemory *curl_result_memory) {
     curl_result_memory->memory = calloc(1, 1);

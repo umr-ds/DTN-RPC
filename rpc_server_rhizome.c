@@ -191,6 +191,128 @@ int _rpc_server_rhizome_process () {
         curl_easy_cleanup(curl_handler);
     clean_rhizome_server_listener:
         _curl_free_memory(&curl_result_memory);
+int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *client_sid) {
+    int return_code = 0;
 
+	// Init the cURL stuff.
+    CURL *curl_handler = NULL;
+    CURLcode curl_res;
+    struct CurlResultMemory curl_result_memory;
+    _rpc_curl_init_memory(&curl_result_memory);
+    if ((curl_handler = curl_easy_init()) == NULL) {
+        pfatal("Failed to create curl handle in post. Aborting.");
+        return_code = -1;
+        goto clean_rhizome_server_listener;
+    }
+
+	// Declare all needed headers forms and URLs.
+    struct curl_slist *header = NULL;
+    char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
+
+    // Set basic cURL options and a callback function, where results from the cURL call are handled.
+    _rpc_curl_set_basic_opt(url_get, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
+
+    // Get the bundlelist.
+    curl_res = curl_easy_perform(curl_handler);
+    if (curl_res != CURLE_OK) {
+        pfatal("CURL failed (get): %s. Aborting.", curl_easy_strerror(curl_res));
+        return_code = -1;
+        goto clean_rhizome_server_listener_all;
+    }
+
+    {
+        // Write the bundlelist to a string for manipulations.
+        char json_string[(size_t)curl_result_memory.size - 1];
+        memcpy(json_string, curl_result_memory.memory, (size_t)curl_result_memory.size - 1);
+
+        // Parse JSON:
+        // Init, ...
+        cJSON *incoming_json = cJSON_Parse(json_string);
+        // ... get the 'rows' entry, ...
+        cJSON *rows = cJSON_GetObjectItem(incoming_json, "rows");
+        // (if there are no files in the store, abort)
+		int num_rows = cJSON_GetArraySize(rows);
+        if (num_rows <= 0) {
+            return_code = 1;
+            goto clean_rhizome_server_listener_all;
+        }
+
+		char rpc_cmp_name[2 + strlen(rpc_name)];
+		sprintf(rpc_cmp_name, "f_%s", rpc_name);
+
+		int i;
+		for (i = 0; i < num_rows; i++) {
+	        // ... consider only the recent file, ...
+	        cJSON *recent_file = cJSON_GetArrayItem(rows, i);
+	        // ... get the 'service', ...
+	        char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+	        // ... the sender from the recent file.
+	        char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
+	        // ... the recipient from the recent file.
+	        char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
+	        // ... the recipient from the recent file.
+	        char *name = cJSON_GetArrayItem(recent_file, 13)->valuestring;
+
+	        // Check, if this file is an RPC packet and if it is not from but for the client.
+	        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
+	        int filename_is_right = strncmp(name, rpc_cmp_name, strlen(rpc_cmp_name)) == 0;
+	        int right_client = strncmp(sender, client_sid, strlen(client_sid)) == 0;
+			int not_my_file = 0;
+			if (recipient) {
+	        	not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+			} else {
+				not_my_file = 1;
+			}
+
+	        // If this is an interesting file: handle it.
+	        if (service_is_rpc  && not_my_file && filename_is_right && right_client) {
+	            // Free everyhing, again.
+
+				if ((curl_handler = curl_easy_init()) == NULL) {
+			        pfatal("Failed to create curl handle in post. Aborting.");
+			        return_code = -1;
+			        goto clean_rhizome_server_listener;
+			    }
+
+	            _rpc_curl_reinit_memory(&curl_result_memory);
+	            curl_slist_free_all(header);
+	            header = NULL;
+
+				char filename[strlen("/Users/Artur/Desktop/") + strlen(rpc_cmp_name)];
+				sprintf(filename, "/Users/Artur/Desktop/%s", rpc_cmp_name);
+				FILE* rpc_file = fopen(filename, "w");
+
+	            // Get the bundle ID of the file which should be decrypted.
+	            char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
+	            char url_decrypt[117];
+	            sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
+
+	            _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
+        		curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_to_file);
+				curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, rpc_file);
+
+	            // Decrypt the file.
+	            curl_res = curl_easy_perform(curl_handler);
+	            if (curl_res != CURLE_OK) {
+	                pfatal("CURL failed (decrypt): %s.", curl_easy_strerror(curl_res));
+	                return_code = -1;
+	                goto clean_rhizome_server_listener_all;
+	            }
+				fclose(rpc_file);
+				strcpy(fpath, filename);
+				return_code = 0;
+				break;
+	        }
+	    }
+	}
+    clean_rhizome_server_listener_all:
+        curl_slist_free_all(header);
+        curl_easy_cleanup(curl_handler);
+    clean_rhizome_server_listener:
+        _rpc_curl_free_memory(&curl_result_memory);
+
+	pdebug("Name: %s", rpc_name);
     return return_code;
 }

@@ -29,3 +29,5 @@ void _curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_file_n
 char* _rpc_flatten_params (const int paramc, const char **params, const char *delim);
 uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const char *rpc_name, const char *flat_params);
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
+int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_name, const char *filepath);
+int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *client_sid);

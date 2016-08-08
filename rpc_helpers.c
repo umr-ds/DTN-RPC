@@ -47,3 +47,69 @@ size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
     fclose(tmp_file);
     return written_size;
 }
+
+
+
+int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_name, const char *filepath) {
+	int result = 0;
+    // Construct the manifest and write it to the manifest file.
+	char tmp_manifest_file_name[L_tmpnam];
+	if (is_sid_t_broadcast(sid)) {
+		int manifest_size = strlen("service=RPC\nname=f_\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
+		char manifest_str[manifest_size];
+		sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid));
+		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+	} else {
+		int manifest_size = strlen("service=RPC\nnamef_=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
+	    char manifest_str[manifest_size];
+	    sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+	    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+	}
+
+    // Init the cURL stuff.
+    CURL *curl_handler = NULL;
+    CURLcode curl_res;
+    struct CurlResultMemory curl_result_memory;
+    _rpc_curl_init_memory(&curl_result_memory);
+    if ((curl_handler = curl_easy_init()) == NULL) {
+        pfatal("Failed to create curl handle in post. Aborting.");
+        result = -1;
+        goto clean_rhizome_insert;
+    }
+
+    // Declare all needed headers forms and URLs.
+    struct curl_slist *header = NULL;
+    struct curl_httppost *formpost = NULL;
+    struct curl_httppost *lastptr = NULL;
+    char *url_insert = "http://localhost:4110/restful/rhizome/insert";
+
+    // Set basic cURL options (see function).
+    _rpc_curl_set_basic_opt(url_insert, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
+
+    // Add the manifest and payload form and add the form to the cURL request.
+    _rpc_curl_add_file_form(tmp_manifest_file_name, filepath, curl_handler, formpost, lastptr);
+
+    // Perfom request, which means insert the RPC file to the store.
+    curl_res = curl_easy_perform(curl_handler);
+    if (curl_res != CURLE_OK) {
+        pfatal("CURL failed (post): %s. Aborting.", curl_easy_strerror(curl_res));
+        result = -1;
+        goto clean_rhizome_insert_all;
+    }
+
+	char *test = &strrchr((char *) curl_result_memory.memory, '=')[1];
+	memcpy(filehash, test, 128);
+	memcpy(&filehash[128], "\0", 1);
+
+    // Clean up.
+	clean_rhizome_insert_all:
+		curl_slist_free_all(header);
+    clean_rhizome_insert:
+		curl_easy_cleanup(curl_handler);
+		_rpc_curl_free_memory(&curl_result_memory);
+		remove(tmp_manifest_file_name);
+
+    return result;
+}
