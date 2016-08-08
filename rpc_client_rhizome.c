@@ -36,7 +36,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
-    _curl_init_memory(&curl_result_memory);
+    _rpc_curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
         pfatal("Failed to create curl handle in post. Aborting.");
         return_code = -1;
@@ -50,13 +50,13 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     char *url_insert = "http://localhost:4110/restful/rhizome/insert";
 
     // Set basic cURL options (see function).
-    _curl_set_basic_opt(url_insert, curl_handler, header);
-    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+    _rpc_curl_set_basic_opt(url_insert, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
     curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
 
     // Add the manifest and payload form and add the form to the cURL request.
-    _curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
+    _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
@@ -83,15 +83,15 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
         }
 
         // Remove everything from the cURL memory.
-        _curl_reinit_memory(&curl_result_memory);
+        _rpc_curl_reinit_memory(&curl_result_memory);
 
         header = NULL;
         char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
 
         // Again, set basic options, ...
-        _curl_set_basic_opt(url_get, curl_handler, header);
+        _rpc_curl_set_basic_opt(url_get, curl_handler, header);
         // ... but this time add a callback function, where results from the cURL call are handled.
-        curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+        curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
         curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
         // Get the bundlelist.
@@ -124,7 +124,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
 
         if (service_is_rpc  && not_my_file) {
             // Free everyhing, again.
-            _curl_reinit_memory(&curl_result_memory);
+            _rpc_curl_reinit_memory(&curl_result_memory);
             curl_slist_free_all(header);
             header = NULL;
 
@@ -133,7 +133,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
             char url_decrypt[117];
             sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
 
-            _curl_set_basic_opt(url_decrypt, curl_handler, header);
+            _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
             // Decrypt the file.
             curl_res = curl_easy_perform(curl_handler);
@@ -170,7 +170,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
         curl_slist_free_all(header);
         curl_easy_cleanup(curl_handler);
     clean_rhizome_client_call:
-        _curl_free_memory(&curl_result_memory);
+        _rpc_curl_free_memory(&curl_result_memory);
         remove(tmp_manifest_file_name);
         remove(tmp_payload_file_name);
 

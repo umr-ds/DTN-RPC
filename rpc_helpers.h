@@ -15,15 +15,16 @@ struct CurlResultMemory {
   size_t size;
 };
 
-size_t _curl_write_response (void *contents, size_t size, size_t nmemb, void *userp);
+size_t _rpc_curl_write_response (void *contents, size_t size, size_t nmemb, void *userp);
+size_t _rpc_curl_write_to_file (void *contents, size_t size, size_t nmemb, FILE *dst_file);
 
-void _curl_init_memory (struct CurlResultMemory *curl_result_memory);
-void _curl_reinit_memory (struct CurlResultMemory *curl_result_memory);
-void _curl_free_memory (struct CurlResultMemory *curl_result_memory);
+void _rpc_curl_init_memory (struct CurlResultMemory *curl_result_memory);
+void _rpc_curl_reinit_memory (struct CurlResultMemory *curl_result_memory);
+void _rpc_curl_free_memory (struct CurlResultMemory *curl_result_memory);
 
-void _curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header);
+void _rpc_curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header);
 
-void _curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr);
+void _rpc_curl_add_file_form (const char *tmp_manifest_file_name, const char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr);
 
 // General helpers.
 char* _rpc_flatten_params (const int paramc, const char **params, const char *delim);
