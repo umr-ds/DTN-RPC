@@ -114,3 +114,48 @@ int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_nam
 
     return result;
 }
+
+// Function to check if a SID is reachable via MDP or MSP.
+int _rpc_sid_is_reachable (sid_t sid) {
+	// Create a MDP socket.
+	int mdp_sockfd;
+	if ((mdp_sockfd = mdp_socket()) < 0) {
+		pfatal("Could not create MDP lookup socket. Aborting.");
+		return -1;
+	}
+
+	// Init a mdp_frame
+	overlay_mdp_frame mdp;
+	bzero(&mdp,sizeof(mdp));
+
+	// Set the packettype to get a routingtable.
+	mdp.packetTypeAndFlags = MDP_ROUTING_TABLE;
+	overlay_mdp_send(mdp_sockfd, &mdp, 0, 0);
+
+	// Poll until there is nothing left.
+	while (overlay_mdp_client_poll(mdp_sockfd, 200)) {
+		// Create mdp_frame for incoming data. TTL is required but not needed...
+		overlay_mdp_frame recv_frame;
+		int ttl;
+		if (overlay_mdp_recv(mdp_sockfd, &recv_frame, 0, &ttl)) {
+      		continue;
+  		}
+
+		// Handle incoming data.
+		int offset=0;
+		while (offset + sizeof(struct overlay_route_record) <= recv_frame.out.payload_length) {
+			// Make new route record struct where all needed information is stored in.
+			struct overlay_route_record *record = &recv_frame.out.route_record;
+			offset += sizeof(struct overlay_route_record);
+
+			// If the record (aka SID) is reachable, and the record is the desired SID, return 1 and clean up.
+			if ((record->reachable == REACHABLE || record->reachable == REACHABLE_SELF)
+					&& cmp_sid_t(&record->sid, &sid) == 0) {
+				mdp_close(mdp_sockfd);
+				return 1;
+			}
+		}
+	}
+  mdp_close(mdp_sockfd);
+  return 0;
+}

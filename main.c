@@ -19,7 +19,7 @@ void _close_keyring () {
 // Signalhandler for stopping the server on ctrl-c
 void _rpc_server_sig_handler (int signum) {
     pwarn("Caught signal with signum %i. Stopping RPC server.", signum);
-    running = 1;
+    server_running = 1;
 }
 
 // Simple usage method

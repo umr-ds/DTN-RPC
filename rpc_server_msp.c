@@ -42,9 +42,19 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
                 // Try to execute the procedure.
 			    uint8_t result_payload[2 + 127 + 1];
                 if (_rpc_server_excecute(result_payload, rp) == 0) {
-					pinfo("Sending result via MSP.");
-        			msp_send(sock, result_payload, sizeof(result_payload));
-                    pinfo("RPC execution was successful.");
+					// Try MSP
+					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)){
+						pinfo("Sending result via MSP.");
+	        			if (msp_send(sock, result_payload, sizeof(result_payload)) == sizeof(result_payload)) {
+							pinfo("RPC execution was successful.");
+						}
+					} else if (server_mode == RPC_SERVER_MODE_ALL) {
+						// Use Rhizome if MSP is not available and server_mode is ALL.
+						pwarn("MSP not available for result. Sending via Rhizome.");
+						_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
+					} else {
+						pfatal("MSP not available for result. Aborting.");
+					}
                     ret = len;
                 } else {
 					pfatal("RPC execution was not successful. Aborting.");

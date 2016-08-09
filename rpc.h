@@ -9,18 +9,22 @@
 #include "server.h"
 
 #include "rpc_server.h"
+#include "rpc_client.h"
 #include "rpc_helpers.h"
 #include "cJSON.h"
 
 /**** General. ****/
-#define MDP_PORT_RPC	18
-#define MDP_PORT_RPC_MSP		112
+// MDP ports
+#define MDP_PORT_RPC		18
+#define MDP_PORT_RPC_MSP	112
 
-#define RPC_CONF_FILENAME "rpc.conf"
-#define RPC_TMP_FOLDER "/tmp/rpc_tmp/"
-#define SERVAL_FOLDER "/serval/"
-#define BIN_FOLDER "/serval/rpc_bin/"
+// String defines
+#define RPC_CONF_FILENAME	"rpc.conf"
+#define RPC_TMP_FOLDER		"/tmp/rpc_tmp/"
+#define SERVAL_FOLDER		"/serval/"
+#define BIN_FOLDER			"/serval/rpc_bin/"
 
+// Packet types
 #define RPC_PKT_CALL            0
 #define RPC_PKT_CALL_ACK        1
 #define RPC_PKT_CALL_RESPONSE   2

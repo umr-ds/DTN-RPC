@@ -132,6 +132,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 
 // Main listening function.
 int rpc_server_listen () {
+	server_mode = RPC_SERVER_MODE_ALL;
 	// Setup MDP and MSP.
     if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
@@ -142,8 +143,8 @@ int rpc_server_listen () {
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
 			_rpc_server_mdp_cleanup();
@@ -154,7 +155,7 @@ int rpc_server_listen () {
 		_rpc_server_mdp_process();
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
-			running = 1;
+			server_running = 1;
 		}
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
@@ -164,14 +165,15 @@ int rpc_server_listen () {
 
 // MDP listening function.
 int rpc_server_listen_msp () {
+	server_mode = RPC_SERVER_MODE_MSP;
 	// Setup MSP.
     if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
             break;
@@ -186,12 +188,13 @@ int rpc_server_listen_msp () {
 
 // Rhizome listening function.
 int rpc_server_listen_rhizome () {
+	server_mode = RPC_SERVER_MODE_RHIZOME;
 	// Run RPC server.
-    while (running < 1) {
+    while (server_running < 1) {
 		// Process Rhizome
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
-			running = 1;
+			server_running = 1;
 		}
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
@@ -201,14 +204,15 @@ int rpc_server_listen_rhizome () {
 
 // MDP listening function.
 int rpc_server_listen_mdp_broadcast () {
+	server_mode = RPC_SERVER_MODE_MDP;
 	// Setup MDP.
 	if (_rpc_server_mdp_setup() == -1) {
 		pfatal("Could not setup MDP listener. Aborting.");
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_mdp_cleanup();
             break;

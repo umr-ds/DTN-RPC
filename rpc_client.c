@@ -58,6 +58,7 @@ int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int par
 
 	else {
         // Call the rpc directly over msp.
+		client_mode = RPC_CLIENT_MODE_TRANSPARTEN;
         int call_return = rpc_client_call_msp(server_sid, rpc_name, paramc, params);
 
 		if (call_return == -1) {

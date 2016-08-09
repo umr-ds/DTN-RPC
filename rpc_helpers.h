@@ -12,6 +12,14 @@
 #define pwarn(fmt, ...)     printf(RPC_WARN fmt RPC_RESET "\n", ##__VA_ARGS__);
 #define pdebug(fmt, ...)    printf(RPC_DEBUG fmt RPC_RESET "\n", ##__VA_ARGS__);
 
+// Functions.
+char* _rpc_flatten_params (const int paramc, const char **params, const char *delim);
+uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const char *rpc_name, const char *flat_params);
+size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
+int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_name, const char *filepath);
+
+int _rpc_sid_is_reachable (sid_t sid);
+
 /**** cURL helpers. ****/
 struct CurlResultMemory {
   char *memory;
@@ -28,9 +36,3 @@ void _rpc_curl_free_memory (struct CurlResultMemory *curl_result_memory);
 void _rpc_curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header);
 
 void _rpc_curl_add_file_form (const char *tmp_manifest_file_name, const char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr);
-
-/**** General helpers. ****/
-char* _rpc_flatten_params (const int paramc, const char **params, const char *delim);
-uint8_t *_rpc_prepare_call_payload (uint8_t *payload, const int paramc, const char *rpc_name, const char *flat_params);
-size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
-int _rpc_add_file_to_store (char *filehash, const sid_t sid, const char *rpc_name, const char *filepath);
