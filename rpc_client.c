@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // General call function. For transparent usage.
-int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params) {
+int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params) {
 	received = 0;
     if (is_sid_t_broadcast(server_sid)) {
 		// Broadcast the RPC.

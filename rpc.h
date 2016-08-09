@@ -41,13 +41,13 @@ int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int received;
-uint8_t *rpc_result[126];
+uint8_t *rpc_result[512];
 
 // Transparent
-int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params);
+int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params);
 // Direct
-int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params);
 // Delay-tolerant (any/direct)
-int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);
+int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);
 // Any
-int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const char **params);
+int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params);

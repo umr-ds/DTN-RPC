@@ -1,5 +1,8 @@
 #include "rpc.h"
 
+char *current_rpc = "";
+char *current_sid = "";
+
 // The RPC client handler
 size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
     size_t ret = 0;
@@ -30,6 +33,11 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
         } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
             pinfo("Answer received.");
             memcpy(rpc_result, &payload[2], len - 2);
+			if (_rpc_str_is_filehash((char *) rpc_result)) {
+				char fpath[128 + strlen(current_rpc) + 3];
+				while (_rpc_download_file(fpath, current_rpc, current_sid) != 0) sleep(1);
+				memcpy(rpc_result, fpath, 128 + strlen(current_rpc) + 3);
+			}
             received = 2;
         }
     }
@@ -37,13 +45,15 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 }
 
 // Direct call function.
-int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
+int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 	// Check if the sid is even reachable before doing anything else.
 	if (!_rpc_sid_is_reachable(sid)) {
 		return -1;
 	}
 	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
 	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARTEN ? RPC_CLIENT_MODE_TRANSPARTEN : RPC_CLIENT_MODE_NON_TRANSPARENT;
+	current_sid = alloca_tohex_sid_t(sid);
+	current_rpc = rpc_name;
 
     // Create address struct ...
     struct mdp_sockaddr addr;
@@ -90,7 +100,7 @@ int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc
 			new_params[i] = (char *) params[i];
 		}
 
-		flat_params = _rpc_flatten_params(paramc, (const char **) new_params, "|");
+		flat_params = _rpc_flatten_params(paramc, (char **) new_params, "|");
 	} else {
 		flat_params = _rpc_flatten_params(paramc, params, "|");
 	}

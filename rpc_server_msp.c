@@ -25,7 +25,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 			struct mdp_sockaddr addr;
 		    bzero(&addr, sizeof addr);
 			msp_get_remote(sock, &addr);
-            struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
+            struct RPCProcedure rp = _rpc_server_parse_call((uint8_t *) payload, len);
 			if (str_to_sid_t(&rp.caller_sid, alloca_tohex_sid_t(addr.sid)) == -1) {
 				pfatal("Could not convert SID to sid_t. Aborting.");
 				return len;
@@ -40,7 +40,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
                 ret = msp_send(sock, ack_payload, sizeof(ack_payload));
 
                 // Try to execute the procedure.
-			    uint8_t result_payload[2 + 127 + 1];
+			    uint8_t result_payload[2 + 129 + 1];
                 if (_rpc_server_excecute(result_payload, rp) == 0) {
 					// Try MSP
 					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)){

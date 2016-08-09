@@ -21,12 +21,11 @@ int server_mode;
 
 int _rpc_server_check_offered (struct RPCProcedure *rp);
 int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp);
-struct RPCProcedure _rpc_server_parse_call (const uint8_t *payload, size_t len);
+struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len);
 
 /**** Rhizome part. ****/
 int _rpc_server_rhizome_process ();
-int _rpc_server_rhizome_download_file (char *fpath, const char *rpc_name, char *client_sid);
-int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint8_t *payload);
+int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload);
 
 /**** MDP part. ****/
 int _rpc_server_mdp_setup ();

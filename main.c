@@ -105,9 +105,9 @@ int main (int argc, char **argv) {
 		}
 
 		// Parse params.
-		const char *sidhex = argv[offset];
-		const char *name = argv[offset + 1];
-		const char *param1 = argv[offset + 2];
+		char *sidhex = argv[offset];
+		char *name = argv[offset + 1];
+		char *param1 = argv[offset + 2];
 
 		// Serval has a function, where the string "broadcast" gets parsed to SID_BROADCAST.
 		// If we get the string "any", we set it to "braodcast" and let Serval do the rest.
@@ -123,7 +123,7 @@ int main (int argc, char **argv) {
 		// Get length of additional arguments...
 		unsigned int nfields = argc - (offset + 3);
 		// and create new parameter array of the particular length.
-		const char *params[nfields + 1];
+		char *params[nfields + 1];
 		params[0] = param1;
 		// Parse additional arguments:
 		unsigned int i;

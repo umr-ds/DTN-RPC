@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // MDP call function. For broadcasts.
-int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const char **params) {
+int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
 	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARTEN ? RPC_CLIENT_MODE_TRANSPARTEN : RPC_CLIENT_MODE_NON_TRANSPARENT;
 	// Open the mdp socket.
@@ -40,7 +40,7 @@ int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const
 			new_params[i] = (char *) params[i];
 		}
 
-		flat_params = _rpc_flatten_params(paramc, (const char **) new_params, "|");
+		flat_params = _rpc_flatten_params(paramc, (char **) new_params, "|");
 	} else {
 		flat_params = _rpc_flatten_params(paramc, params, "|");
 	}
@@ -102,6 +102,11 @@ int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const
 				// If we reveived the result, copy it to the result array.
 	            pinfo("Answer received.");
 	            memcpy(rpc_result, &recv_payload[2], incoming_len - 2);
+				if (_rpc_str_is_filehash((char *) rpc_result)) {
+					char fpath[128 + strlen(rpc_name) + 3];
+					while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 0) sleep(1);
+					memcpy(rpc_result, fpath, 128 + strlen(rpc_name) + 3);
+				}
 	            received = 2;
 	        }
 		}

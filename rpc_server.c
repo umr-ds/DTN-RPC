@@ -41,7 +41,7 @@ int _rpc_server_check_offered (struct RPCProcedure *rp) {
 }
 
 // Function to parse the received payload.
-struct RPCProcedure _rpc_server_parse_call (const uint8_t *payload, size_t len) {
+struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     pinfo("Parsing call.");
     // Create a new rp struct.
     struct RPCProcedure rp;
@@ -92,13 +92,13 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 	int param_is_filehash = strcmp(rp.params[0], "filehash") == 0;
 	if (param_is_filehash) {
 		char fpath[128 + strlen(rp.name) + 3];
-		while (_rpc_server_rhizome_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
+		while (_rpc_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
 
 		free(rp.params[1]);
 		rp.params[1] = calloc(strlen(fpath) + 1, sizeof(char));
 		strcpy(rp.params[1], fpath);
 	}
-	char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (const char **) rp.params, " ");
+	char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (char **) rp.params, " ");
 
     char cmd[strlen(bin) + strlen(flat_params)];
     sprintf(cmd, "%s%s", bin, flat_params);
@@ -115,8 +115,18 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        fgets((char *)&result_payload[2], 127, pipe_fp);
-        memcpy(&result_payload[129], "\0", 1);
+        fgets((char *)&result_payload[2], 129, pipe_fp);
+		memcpy(&result_payload[131], "\0", 1);
+
+		if (!access((char *) &result_payload[2], F_OK)) {
+			// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
+			char filehash[129];
+			_rpc_add_file_to_store(filehash, rp.caller_sid, rp.name, (char*) &result_payload[2]);
+
+			memcpy(&result_payload[2], filehash, 129);
+			memcpy(&result_payload[131], "\0", 1);
+		}
+
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {

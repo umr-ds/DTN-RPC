@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // Rhizome listener function.
-int _rpc_client_rhizome_listen () {
+int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	int return_code = -1;
 
 	// Init the cURL stuff.
@@ -16,14 +16,7 @@ int _rpc_client_rhizome_listen () {
 	    goto clean_rhizome_client_call_all;
 	}
 
-	// We only wait for a few seconds (while developing. Lateron definitely longer).
-	time_t timeout = time(NULL);
-	int waittime = 10;
 	while (received == 0) {
-	    if ((double) (time(NULL) - timeout) >= waittime) {
-	        break;
-	    }
-
 	    // Remove everything from the cURL memory.
 	    _rpc_curl_reinit_memory(&curl_result_memory);
 
@@ -94,11 +87,15 @@ int _rpc_client_rhizome_listen () {
 	            // If we got an ACK packet, we wait (for now) 5 more seconds.
 	            pinfo("Received ACK via Rhizome. Waiting.");
 				return_code = 1;
-	            waittime = 20;
 	        } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
 	            // We got our result!
 	            pinfo("Received result.");
 	            memcpy(rpc_result, &recv_payload[2], filesize - 2);
+				if (_rpc_str_is_filehash((char *) rpc_result)) {
+					char fpath[128 + strlen(rpc_name) + 3];
+					while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(sid)) != 0) sleep(1);
+					memcpy(rpc_result, fpath, 128 + strlen(rpc_name) + 3);
+				}
 	            return_code = 2;
 	            received = 1;
 	            break;
@@ -117,7 +114,7 @@ int _rpc_client_rhizome_listen () {
 }
 
 // Delay-tolerant call function.
-int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params) {
+int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params) {
 	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
 	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARTEN ? RPC_CLIENT_MODE_TRANSPARTEN : RPC_CLIENT_MODE_NON_TRANSPARENT;
     int return_code = -1;
@@ -139,7 +136,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
 			new_params[i] = (char *) params[i];
 		}
 
-		flat_params = _rpc_flatten_params(paramc, (const char **) new_params, "|");
+		flat_params = _rpc_flatten_params(paramc, (char **) new_params, "|");
 	} else {
 		flat_params = _rpc_flatten_params(paramc, params, "|");
 	}
@@ -205,7 +202,7 @@ int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int pa
     }
 
 	// Listen until we receive something.
-	return_code = _rpc_client_rhizome_listen();
+	return_code = _rpc_client_rhizome_listen(sid, rpc_name);
 
     // Clean up.
     clean_rhizome_client_call_all:
