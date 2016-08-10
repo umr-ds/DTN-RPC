@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // Send the result via Rhizome
-int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint8_t *payload) {
+int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload) {
     int return_code = 1;
 
     // Construct the manifest and write it to the manifest file.
@@ -19,7 +19,7 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
-    _curl_init_memory(&curl_result_memory);
+    _rpc_curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
         pfatal("Failed to create curl handle in post. Aborting.");
         return_code = -1;
@@ -33,17 +33,17 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
     char *url_insert = "http://localhost:4110/restful/rhizome/insert";
 
     // Set basic cURL options and a callback function, where results from the cURL call are handled.
-    _curl_set_basic_opt(url_insert, curl_handler, header);
-    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+    _rpc_curl_set_basic_opt(url_insert, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
     curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
     // Add the manifest and payload form and add the form to the cURL request.
-    _curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
+    _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
     // Perfom request, which means insert the RPC file to the store.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (post): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (post server result): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_response_all;
     }
@@ -53,13 +53,14 @@ int _rpc_server_rhizome_send_result (const sid_t sid, const char *rpc_name, uint
         curl_slist_free_all(header);
         curl_easy_cleanup(curl_handler);
     clean_rhizome_server_response:
-        _curl_free_memory(&curl_result_memory);
+        _rpc_curl_free_memory(&curl_result_memory);
         remove(tmp_manifest_file_name);
         remove(tmp_payload_file_name);
 
     return return_code;
 }
 
+// Rhizome server processing.
 int _rpc_server_rhizome_process () {
     int return_code = 0;
 
@@ -67,7 +68,7 @@ int _rpc_server_rhizome_process () {
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
-    _curl_init_memory(&curl_result_memory);
+    _rpc_curl_init_memory(&curl_result_memory);
     if ((curl_handler = curl_easy_init()) == NULL) {
         pfatal("Failed to create curl handle in post. Aborting.");
         return_code = -1;
@@ -79,14 +80,14 @@ int _rpc_server_rhizome_process () {
     char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
 
     // Set basic cURL options and a callback function, where results from the cURL call are handled.
-    _curl_set_basic_opt(url_get, curl_handler, header);
-    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _curl_write_response);
+    _rpc_curl_set_basic_opt(url_get, curl_handler, header);
+    curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
     curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 
     // Get the bundlelist.
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
-        pfatal("CURL failed (get): %s. Aborting.", curl_easy_strerror(curl_res));
+        pfatal("CURL failed (get server process): %s. Aborting.", curl_easy_strerror(curl_res));
         return_code = -1;
         goto clean_rhizome_server_listener_all;
     }
@@ -116,20 +117,18 @@ int _rpc_server_rhizome_process () {
         char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
         // Check, if this file is an RPC packet and if it is not from but for the client.
-        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
+        int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
 		int not_my_file = 0;
 		if (recipient) {
-        	not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
 		} else {
 			not_my_file = 1;
 		}
 
-		pdebug("Recipient: %i", not_my_file);
-
         // If this is an interesting file: handle it.
         if (service_is_rpc  && not_my_file) {
             // Free everyhing, again.
-            _curl_reinit_memory(&curl_result_memory);
+            _rpc_curl_reinit_memory(&curl_result_memory);
             curl_slist_free_all(header);
             header = NULL;
 
@@ -138,12 +137,12 @@ int _rpc_server_rhizome_process () {
             char url_decrypt[117];
             sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
 
-            _curl_set_basic_opt(url_decrypt, curl_handler, header);
+            _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
             // Decrypt the file.
             curl_res = curl_easy_perform(curl_handler);
             if (curl_res != CURLE_OK) {
-                pfatal("CURL failed (decrypt): %s.", curl_easy_strerror(curl_res));
+                pfatal("CURL failed (decrypt server process): %s.", curl_easy_strerror(curl_res));
                 return_code = -1;
                 goto clean_rhizome_server_listener_all;
             }
@@ -163,8 +162,8 @@ int _rpc_server_rhizome_process () {
                     goto clean_rhizome_server_listener_all;
         		}
 
-                // Check, if we offer this procedure.
-                if (_rpc_server_check_offered(&rp) == 0) {
+                // Check, if we offer this procedure and we should accept the call.
+                if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
                     pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                     // Compile and send ACK packet.
@@ -173,8 +172,8 @@ int _rpc_server_rhizome_process () {
                     _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.
-				    uint8_t result_payload[2 + 127 + 1];
-	                if (_rpc_server_excecute(result_payload, rp) == 0) {
+				    uint8_t result_payload[2 + 129 + 1];
+	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
                         pinfo("RPC execution was successful.");
@@ -190,7 +189,7 @@ int _rpc_server_rhizome_process () {
         curl_slist_free_all(header);
         curl_easy_cleanup(curl_handler);
     clean_rhizome_server_listener:
-        _curl_free_memory(&curl_result_memory);
+        _rpc_curl_free_memory(&curl_result_memory);
 
     return return_code;
 }

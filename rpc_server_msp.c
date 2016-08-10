@@ -22,10 +22,17 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
         if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
             pinfo("Received RPC via MSP.");
             // Parse the payload to the RPCProcedure struct
-            struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
+			struct mdp_sockaddr addr;
+		    bzero(&addr, sizeof addr);
+			msp_get_remote(sock, &addr);
+            struct RPCProcedure rp = _rpc_server_parse_call((uint8_t *) payload, len);
+			if (str_to_sid_t(&rp.caller_sid, alloca_tohex_sid_t(addr.sid)) == -1) {
+				pfatal("Could not convert SID to sid_t. Aborting.");
+				return len;
+			}
 
-            // Check, if we offer this procedure.
-            if (_rpc_server_check_offered(&rp) == 0) {
+            // Check, if we offer this procedure and we should accept the call.
+            if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
                 pinfo("Offering desired RPC. Sending ACK.");
                 // Compile and send ACK packet.
                 uint8_t ack_payload[2];
@@ -33,11 +40,21 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
                 ret = msp_send(sock, ack_payload, sizeof(ack_payload));
 
                 // Try to execute the procedure.
-			    uint8_t result_payload[2 + 127 + 1];
-                if (_rpc_server_excecute(result_payload, rp) == 0) {
-					pinfo("Sending result via MSP.");
-        			msp_send(sock, result_payload, sizeof(result_payload));
-                    pinfo("RPC execution was successful.");
+			    uint8_t result_payload[2 + 129 + 1];
+                if (_rpc_server_excecute(result_payload, rp)) {
+					// Try MSP
+					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {
+						pinfo("Sending result via MSP.");
+	        			if (msp_send(sock, result_payload, sizeof(result_payload)) == sizeof(result_payload)) {
+							pinfo("RPC execution was successful.");
+						}
+					} else if (server_mode == RPC_SERVER_MODE_ALL) {
+						// Use Rhizome if MSP is not available and server_mode is ALL.
+						pwarn("MSP not available for result. Sending via Rhizome.");
+						_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
+					} else {
+						pfatal("MSP not available for result. Aborting.");
+					}
                     ret = len;
                 } else {
 					pfatal("RPC execution was not successful. Aborting.");

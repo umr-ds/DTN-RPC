@@ -14,7 +14,7 @@ int _rpc_server_mdp_setup () {
 
 	// Set address (SID) and port (MDP port).
 	mdp_addr.sid = BIND_PRIMARY;
-	mdp_addr.port = MDP_PORT_RPC_DISCOVER;
+	mdp_addr.port = MDP_PORT_RPC;
 
 	// Bind to the open socket.
 	if (mdp_bind(mdp_sock, &mdp_addr) < 0) {
@@ -42,7 +42,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 		return -1;
 	}
 
-	// At this point the header is constucted so we can set out address for replies.
+	// At this point the header is constucted so we can set our address for replies.
 	header.local.sid = my_subscriber->sid;
 
 	// If the packet is a RPC call, handle it.
@@ -50,9 +50,13 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 		pinfo("Received RPC call via MDP broadcast.");
 		// Parse the payload to the RPCProcedure struct
 		struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
+		if (str_to_sid_t(&rp.caller_sid, alloca_tohex_sid_t(header.remote.sid)) == -1) {
+			pfatal("Could not convert SID to sid_t. Aborting.");
+			return -1;
+		}
 
-		// Check, if we offer this procedure.
-        if (_rpc_server_check_offered(&rp) == 0) {
+		// Check, if we offer this procedure and we should accept the call.
+        if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
             pinfo("Offering desired RPC. Sending ACK.");
             // Compile and send ACK packet.
             uint8_t ack_payload[2];
@@ -60,11 +64,20 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
             mdp_send(mdp_sockfd, &header, ack_payload, sizeof(ack_payload));
 
             // Try to execute the procedure.
-			uint8_t result_payload[2 + 127 + 1];
-			if (_rpc_server_excecute(result_payload, rp) == 0) {
-				// TODO: If MDP not available, try Rhizome.
-				pinfo("Sending result via MDP.");
-				mdp_send(mdp_sockfd, &header, result_payload, sizeof(result_payload));
+			uint8_t result_payload[2 + 129 + 1];
+			if (_rpc_server_excecute(result_payload, rp)) {
+				// Send result back after successful execution.
+				if (_rpc_sid_is_reachable(header.remote.sid)) {
+					// Try MDP
+					pinfo("Sending result via MDP.");
+					mdp_send(mdp_sockfd, &header, result_payload, sizeof(result_payload));
+				} else if (server_mode == RPC_SERVER_MODE_ALL) {
+					// Use Rhizome if MDP is not available and server_mode is ALL.
+					pwarn("MDP not available for result. Sending via Rhizome.");
+					_rpc_server_rhizome_send_result(SID_BROADCAST, rp.name, result_payload);
+				} else {
+					pfatal("MDP not available for result. Aborting.");
+				}
                 pinfo("RPC execution was successful.");
             }
         } else {
