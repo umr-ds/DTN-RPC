@@ -1,8 +1,16 @@
 #include "rpc.h"
 
+/******* Function where the server checks if the call should be accpected. ****/
+/******* Implement acceptance predicates here. ********************************/
+/******* Return 1 if should accpet, 0 otherwise. ******************************/
+int _rpc_server_accepts (struct RPCProcedure *UNUSED(rp)) {
+	pinfo("Checking, if should accept the call.");
+	return 1;
+}
+
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
-int _rpc_server_check_offered (struct RPCProcedure *rp) {
+int _rpc_server_offering (struct RPCProcedure *rp) {
     pinfo("Checking, if \"%s\" is offered.", rp->name);
     // Build the path to the rpc.conf file and open it.
     static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
@@ -19,14 +27,14 @@ int _rpc_server_check_offered (struct RPCProcedure *rp) {
         char *name = strtok(line, " ");
         // If the name matches with the received name ...
         if (strncmp(name, rp->name, strlen(name)) == 0) {
-            ret = 1;
+            ret = 0;
         }
 
         // Split the line at the second space to get the paramc.
         char *paramc = strtok(NULL, " ");
 		// ... and the parameter count, the server offers this RPC.
-        if (ret == 1 && strncmp(paramc, rp->paramc.paramc_s, strlen(paramc)) == 0) {
-            ret = 0;
+        if (ret == 0 && strncmp(paramc, rp->paramc.paramc_s, strlen(paramc)) == 0) {
+            ret = 1;
 			break;
         }
     }

@@ -19,7 +19,8 @@ struct RPCProcedure {
 int server_running;
 int server_mode;
 
-int _rpc_server_check_offered (struct RPCProcedure *rp);
+int _rpc_server_offering (struct RPCProcedure *rp);
+int _rpc_server_accepts (struct RPCProcedure *rp);
 int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp);
 struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len);
 

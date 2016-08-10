@@ -69,6 +69,11 @@ With `int rpc_server_listen_rhizome ();` the server will only listen for calls a
 ##### MDP broadcast
 With `int rpc_server_listen_mdp_broadcast ();` the server will only listen for calls addressed to the broadcast address via MDP. The result will be returned directly (not broadcasted) via MDP. If this is not possible, Rhizome will be used increase the probability that the result arrives at the client.
 
+#### Implementing accpetance predicates
+If your server should not accept all calls, (e.g. if you have limited energy resources) you can implement you own predicates in the function `int _rpc_server_accepts (struct RPCProcedure *UNUSED(rp))` in `rpc_server.c`. The implementation is only possible at compile time, so you can not add or remove predicates at runtime.
+
+The function has to return `1` if the call should be accepted and `0` otherwise.
+
 ---
 
 The results are allways end-to-end encrypted, regardless of the chosen way.
@@ -101,7 +106,8 @@ With `int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const 
 
 The result will be stored in `rpc_result`, which is an `\0` terminated array of type `uint8_t`.
 
+###### Complex case
 If your RPC is more than a simple function call and you have to send files, it is only possible to send one file per call. If you need more, you have to pack them (e.g. `tar`). The path to the file which has to be sent must be the first parameter otherwise the path will be sent as a simple string. If the result is a file, too, the path to that file will be stored in `rpc_result`. It is also only possible to get one file back. The implementation of the RPC has to make sure that, in case, all files are packet.
 
-### Caveats
+## Caveats
 At this point the Serval Keyring has to be unencrypted. Furthermore, the credentials for the RESTful API are __RPC__ (username) and __SRPC__ (password).
