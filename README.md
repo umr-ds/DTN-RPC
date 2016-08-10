@@ -73,7 +73,10 @@ With `int rpc_server_listen_mdp_broadcast ();` the server will only listen for c
 
 The results are allways end-to-end encrypted, regardless of the chosen way.
 
-__*TODO*: FILEHASH (KOMPLEX)__
+###### Complex case
+If the server receives data for complex RPCs, the data is stored in `/tmp/rpc_tmp/` with a unique filename. The first argument for that procedure is this path.
+
+If the result of an procedure is a file, the path to that file has to be returned to the RPC server. The server will send the file back via Rhizome.
 
 ### Client
 To call a RPC there are multiple ways. This could be either *directly*, if a RPC server is known or *any*. The third mode is *transparent*, where the best solution is chosen.
@@ -98,7 +101,7 @@ With `int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const 
 
 The result will be stored in `rpc_result`, which is an `\0` terminated array of type `uint8_t`.
 
-__*TODO*: FILEHASH (KOMPLEX);__
+If your RPC is more than a simple function call and you have to send files, it is only possible to send one file per call. If you need more, you have to pack them (e.g. `tar`). The path to the file which has to be sent must be the first parameter otherwise the path will be sent as a simple string. If the result is a file, too, the path to that file will be stored in `rpc_result`. It is also only possible to get one file back. The implementation of the RPC has to make sure that, in case, all files are packet.
 
 ### Caveats
 At this point the Serval Keyring has to be unencrypted. Furthermore, the credentials for the RESTful API are __RPC__ (username) and __SRPC__ (password).

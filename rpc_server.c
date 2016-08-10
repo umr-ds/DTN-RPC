@@ -89,14 +89,13 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 	// Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
 	// we have to compile the bin with all parameters from the struct.
 	// If this is an complex call, we have to donwload the file form the store and replace the hash with the path to the file.
-	int param_is_filehash = strcmp(rp.params[0], "filehash") == 0;
-	if (param_is_filehash) {
+	if (_rpc_str_is_filehash(rp.params[0])) {
 		char fpath[128 + strlen(rp.name) + 3];
 		while (_rpc_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
 
-		free(rp.params[1]);
-		rp.params[1] = calloc(strlen(fpath) + 1, sizeof(char));
-		strcpy(rp.params[1], fpath);
+		free(rp.params[0]);
+		rp.params[0] = calloc(strlen(fpath) + 1, sizeof(char));
+		strcpy(rp.params[0], fpath);
 	}
 	char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (char **) rp.params, " ");
 

@@ -1,5 +1,45 @@
 #include "rpc.h"
 
+// Prepare the payload whith the RPC information.
+uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *rpc_name, char *flat_params) {
+        // Write the packettype, ...
+        write_uint16(&payload[0], RPC_PKT_CALL);
+        // ... number of parameters, ...
+        write_uint16(&payload[2], (uint16_t) paramc);
+        // ... the RPC name ...
+        memcpy(&payload[4], rpc_name, strlen(rpc_name));
+        // ... and the parameters.
+        memcpy(&payload[4 + strlen(rpc_name)], flat_params, strlen(flat_params));
+        // Make sure there is a string terminater. Makes it easier to parse on server side.
+        memcpy(&payload[4 + strlen(rpc_name) + strlen(flat_params)], "\0", 1);
+
+        return payload;
+}
+
+// Function to flatten the parameters and replace the first parameter if it is a local path.
+int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **params, int paramc) {
+	if (!access(params[0], F_OK)) {
+		// Add the file to the Rhizome store given as the first parameter and replace the local path with the filehash.
+		char filehash[129];
+		_rpc_add_file_to_store(filehash, SID_BROADCAST, rpc_name, params[0]);
+
+		char *new_params[paramc];
+		new_params[0] = filehash;
+
+		int i;
+		for (i = 1; i < paramc; i++) {
+			new_params[i] = (char *) params[i];
+		}
+
+		char *flat = _rpc_flatten_params(paramc, (char **) new_params, "|");
+		strcpy(flat_params, flat);
+	} else {
+		char *flat = _rpc_flatten_params(paramc, params, "|");
+		strcpy(flat_params, flat);
+	}
+	return 0;
+}
+
 // General call function. For transparent usage.
 int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params) {
 	received = 0;

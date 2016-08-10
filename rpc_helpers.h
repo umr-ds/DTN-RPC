@@ -14,7 +14,6 @@
 
 // Functions.
 char* _rpc_flatten_params (int paramc, char **params, char *delim);
-uint8_t *_rpc_prepare_call_payload (uint8_t *payload, int paramc, char *rpc_name, char *flat_params);
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
 int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *filepath);
 int _rpc_download_file (char *fpath, char *rpc_name, char *client_sid);

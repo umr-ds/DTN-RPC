@@ -120,26 +120,9 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     int return_code = -1;
 	received = 0;
 
-	// Flatten the params.
-	char *flat_params;
-	if (strncmp(params[0], "filehash", strlen("filehash")) == 0 && paramc >= 2) {
-		// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
-		char filehash[129];
-		_rpc_add_file_to_store(filehash, SID_BROADCAST, rpc_name, params[1]);
-
-		char *new_params[paramc];
-		new_params[0] = (char *) params[0];
-		new_params[1] = filehash;
-
-		int i;
-		for (i = 2; i < paramc; i++) {
-			new_params[i] = (char *) params[i];
-		}
-
-		flat_params = _rpc_flatten_params(paramc, (char **) new_params, "|");
-	} else {
-		flat_params = _rpc_flatten_params(paramc, params, "|");
-	}
+	// Flatten the params and replace the first parameter if it is a local path.
+	char flat_params[512];
+	_rpc_client_replace_if_path(flat_params, rpc_name, params, paramc);
 
     // Construct the payload and write it to the payload file.
     // |------------------------|-------------------|----------------------------|--------------------------|
@@ -147,7 +130,7 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     // |------------------------|-------------------|----------------------------|--------------------------|
     // One extra byte for string termination.
     uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
-    _rpc_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+    _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
     char tmp_payload_file_name[L_tmpnam];
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
