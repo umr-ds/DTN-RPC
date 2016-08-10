@@ -22,7 +22,7 @@ char* _rpc_flatten_params (int paramc, char **params, char *delim) {
 // Function for writing arbitary data to a temporary file. CALLER HAS TO REMOVE IT!
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
     // Create tmp file.
-    tmpnam(file_name);
+    char *UNUSED(tmp_tmpnam_res) = tmpnam(file_name);
     // Open the file.
     FILE *tmp_file = fopen(file_name, "wb+");
     // Write the data.
@@ -237,7 +237,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
 	            header = NULL;
 
 				char rpc_down_name[4 + strlen(rpc_name) + sizeof(in_time) + sizeof(sender)];
-				sprintf(rpc_down_name, "f_%s_%lli_%s", rpc_name, in_time, sender);
+				sprintf(rpc_down_name, "f_%s_%" PRId64 "_%s", rpc_name, in_time, sender);
 
 				char filepath[strlen(RPC_TMP_FOLDER) + strlen(rpc_down_name)];
 				sprintf(filepath, "%s%s", RPC_TMP_FOLDER, rpc_down_name);

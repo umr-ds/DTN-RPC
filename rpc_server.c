@@ -13,7 +13,9 @@ int _rpc_server_accepts (struct RPCProcedure *UNUSED(rp)) {
 int _rpc_server_offering (struct RPCProcedure *rp) {
     pinfo("Checking, if \"%s\" is offered.", rp->name);
     // Build the path to the rpc.conf file and open it.
-    static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
+    int path_size = strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1;
+    char path[path_size];
+    memset(path, 0, path_size);
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
     FILE *conf_file = fopen(path, "r");
 
@@ -122,7 +124,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        fgets((char *)&result_payload[2], 129, pipe_fp);
+        char *UNUSED(tmp_fgets_res) = fgets((char *)&result_payload[2], 129, pipe_fp);
 		memcpy(&result_payload[131], "\0", 1);
 
 		if (!access((char *) &result_payload[2], F_OK)) {

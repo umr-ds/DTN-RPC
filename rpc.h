@@ -1,5 +1,6 @@
 #include <curl/curl.h>
 #include <stddef.h>
+#include <signal.h>
 
 #include "conf.h"
 #include "dataformats.h"
