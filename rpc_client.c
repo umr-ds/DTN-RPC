@@ -152,3 +152,4 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 
     return 1;
 }
+

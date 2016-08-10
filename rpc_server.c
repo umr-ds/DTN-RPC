@@ -1,12 +1,19 @@
 #include "rpc.h"
 
+/******* Function where the server checks if the call should be accpected. ****/
+/******* Implement acceptance predicates here. ********************************/
+/******* Return 1 if should accpet, 0 otherwise. ******************************/
+int _rpc_server_accepts (struct RPCProcedure *UNUSED(rp)) {
+	pinfo("Checking, if should accept the call.");
+	return 1;
+}
+
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
-int _rpc_server_check_offered (struct RPCProcedure *rp) {
+int _rpc_server_offering (struct RPCProcedure *rp) {
     pinfo("Checking, if \"%s\" is offered.", rp->name);
     // Build the path to the rpc.conf file and open it.
-    size_t path_size = strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1;
-    char path[path_size];
+    static char path[strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1] = "";
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
     FILE *conf_file = fopen(path, "r");
 
@@ -19,15 +26,15 @@ int _rpc_server_check_offered (struct RPCProcedure *rp) {
         // Split the line at the first space to get the return type.
         char *name = strtok(line, " ");
         // If the name matches with the received name ...
-        if (strncmp(name, rp->name, strlen(name)) == 0) {
-            ret = 1;
+        if (!strncmp(name, rp->name, strlen(name))) {
+            ret = 0;
         }
 
         // Split the line at the second space to get the paramc.
         char *paramc = strtok(NULL, " ");
 		// ... and the parameter count, the server offers this RPC.
-        if (ret == 1 && strncmp(paramc, rp->paramc.paramc_s, strlen(paramc)) == 0) {
-            ret = 0;
+        if (!ret && !strncmp(paramc, rp->paramc.paramc_s, strlen(paramc))) {
+            ret = 1;
 			break;
         }
     }
@@ -42,7 +49,7 @@ int _rpc_server_check_offered (struct RPCProcedure *rp) {
 }
 
 // Function to parse the received payload.
-struct RPCProcedure _rpc_server_parse_call (const uint8_t *payload, size_t len) {
+struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     pinfo("Parsing call.");
     // Create a new rp struct.
     struct RPCProcedure rp;
@@ -87,9 +94,18 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     char bin[strlen(SYSCONFDIR) + strlen(BIN_FOLDER) + strlen(rp.name)];
     sprintf(bin, "%s%s%s", SYSCONFDIR, BIN_FOLDER, rp.name);
 
-    // Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
-    // we have to compile the bin with all parameters from the struct.
-    char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (const char **) rp.params, " ");
+	// Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
+	// we have to compile the bin with all parameters from the struct.
+	// If this is an complex call, we have to donwload the file form the store and replace the hash with the path to the file.
+	if (_rpc_str_is_filehash(rp.params[0])) {
+		char fpath[128 + strlen(rp.name) + 3];
+		while (_rpc_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
+
+		free(rp.params[0]);
+		rp.params[0] = calloc(strlen(fpath) + 1, sizeof(char));
+		strcpy(rp.params[0], fpath);
+	}
+	char *flat_params = _rpc_flatten_params(rp.paramc.paramc_n, (char **) rp.params, " ");
 
     char cmd[strlen(bin) + strlen(flat_params)];
     sprintf(cmd, "%s%s", bin, flat_params);
@@ -97,7 +113,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // Open the pipe.
     if ((pipe_fp = popen(cmd, "r")) == NULL) {
         pfatal("Could not open the pipe. Aborting.");
-        return -1;
+        return 0;
     }
 
     // Payload. Two bytes for packet type, 126 bytes for the result and 1 byte for '\0' to make sure the result will be a zero terminated string.
@@ -106,24 +122,34 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        char *UNUSED(gets_result) = fgets((char *)&result_payload[2], 127, pipe_fp);
-        memcpy(&result_payload[129], "\0", 1);
+        fgets((char *)&result_payload[2], 129, pipe_fp);
+		memcpy(&result_payload[131], "\0", 1);
+
+		if (!access((char *) &result_payload[2], F_OK)) {
+			// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
+			char filehash[129];
+			_rpc_add_file_to_store(filehash, rp.caller_sid, rp.name, (char*) &result_payload[2]);
+
+			memcpy(&result_payload[2], filehash, 129);
+			memcpy(&result_payload[131], "\0", 1);
+		}
+
         // ... and close the pipe.
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {
             pfatal("Execution of \"%s\" went wrong. See errormessages above for more information. Status %i.", flat_params, WEXITSTATUS(ret_code));
-            return -1;
+            return 0;
         }
         pinfo("Returned result from Binary.");
     } else {
-        return -1;
+        return 0;
     }
-
-    return 0;
+    return 1;
 }
 
 // Main listening function.
 int rpc_server_listen () {
+	server_mode = RPC_SERVER_MODE_ALL;
 	// Setup MDP and MSP.
     if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
@@ -134,8 +160,8 @@ int rpc_server_listen () {
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
 			_rpc_server_mdp_cleanup();
@@ -146,7 +172,7 @@ int rpc_server_listen () {
 		_rpc_server_mdp_process();
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
-			running = 1;
+			server_running = 1;
 		}
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
@@ -156,14 +182,15 @@ int rpc_server_listen () {
 
 // MDP listening function.
 int rpc_server_listen_msp () {
+	server_mode = RPC_SERVER_MODE_MSP;
 	// Setup MSP.
     if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_msp_cleanup();
             break;
@@ -178,12 +205,13 @@ int rpc_server_listen_msp () {
 
 // Rhizome listening function.
 int rpc_server_listen_rhizome () {
+	server_mode = RPC_SERVER_MODE_RHIZOME;
 	// Run RPC server.
-    while (running < 1) {
+    while (server_running < 1) {
 		// Process Rhizome
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
-			running = 1;
+			server_running = 1;
 		}
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
@@ -193,14 +221,15 @@ int rpc_server_listen_rhizome () {
 
 // MDP listening function.
 int rpc_server_listen_mdp_broadcast () {
+	server_mode = RPC_SERVER_MODE_MDP;
 	// Setup MDP.
 	if (_rpc_server_mdp_setup() == -1) {
 		pfatal("Could not setup MDP listener. Aborting.");
 		return -1;
 	}
     // Run RPC server.
-    while (running < 2) {
-        if (running == 1) {
+    while (server_running < 2) {
+        if (server_running == 1) {
 			// Clean everythin up.
 			_rpc_server_mdp_cleanup();
             break;
@@ -212,3 +241,4 @@ int rpc_server_listen_mdp_broadcast () {
     }
 	return 0;
 }
+

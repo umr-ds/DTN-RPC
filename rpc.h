@@ -1,6 +1,5 @@
 #include <curl/curl.h>
 #include <stddef.h>
-#include <signal.h>
 
 #include "conf.h"
 #include "dataformats.h"
@@ -52,3 +51,4 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params);
 int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);
 // Any
 int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params);
+

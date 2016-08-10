@@ -116,3 +116,4 @@ void _rpc_server_msp_cleanup () {
 	mdp_close(mdp_fd_msp);
 	msp_processing(&next_time);
 }
+

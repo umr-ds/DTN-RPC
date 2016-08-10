@@ -102,3 +102,4 @@ void _rpc_server_mdp_process () {
 void _rpc_server_mdp_cleanup () {
 	mdp_close(mdp_sock);
 }
+

@@ -67,3 +67,4 @@ void _rpc_curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_fi
     // Add the forms to the request.
     curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
 }
+

@@ -22,9 +22,9 @@ char* _rpc_flatten_params (int paramc, char **params, char *delim) {
 // Function for writing arbitary data to a temporary file. CALLER HAS TO REMOVE IT!
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
     // Create tmp file.
-    int tmp_fd = mkstemp(file_name);
+    tmpnam(file_name);
     // Open the file.
-    FILE *tmp_file = fdopen(tmp_fd, "wb+");
+    FILE *tmp_file = fopen(file_name, "wb+");
     // Write the data.
     size_t written_size = fwrite(content, 1, len, tmp_file);
     // Close the file.
@@ -281,3 +281,4 @@ int _rpc_str_is_filehash (char *hash) {
 	int is_hex = !hash[strspn(hash, "0123456789ABCDEF")];
 	return len_ok && is_hex;
 }
+

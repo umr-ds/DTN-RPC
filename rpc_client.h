@@ -10,3 +10,4 @@ uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *r
 
 /**** Rhizome part. ****/
 int _rpc_client_rhizome_listen ();
+
