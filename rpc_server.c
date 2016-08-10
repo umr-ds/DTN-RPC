@@ -26,14 +26,14 @@ int _rpc_server_offering (struct RPCProcedure *rp) {
         // Split the line at the first space to get the return type.
         char *name = strtok(line, " ");
         // If the name matches with the received name ...
-        if (strncmp(name, rp->name, strlen(name)) == 0) {
+        if (!strncmp(name, rp->name, strlen(name))) {
             ret = 0;
         }
 
         // Split the line at the second space to get the paramc.
         char *paramc = strtok(NULL, " ");
 		// ... and the parameter count, the server offers this RPC.
-        if (ret == 0 && strncmp(paramc, rp->paramc.paramc_s, strlen(paramc)) == 0) {
+        if (!ret && !strncmp(paramc, rp->paramc.paramc_s, strlen(paramc))) {
             ret = 1;
 			break;
         }
@@ -113,7 +113,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // Open the pipe.
     if ((pipe_fp = popen(cmd, "r")) == NULL) {
         pfatal("Could not open the pipe. Aborting.");
-        return -1;
+        return 0;
     }
 
     // Payload. Two bytes for packet type, 126 bytes for the result and 1 byte for '\0' to make sure the result will be a zero terminated string.
@@ -138,13 +138,13 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
         int ret_code = pclose(pipe_fp);
         if (WEXITSTATUS(ret_code) != 0) {
             pfatal("Execution of \"%s\" went wrong. See errormessages above for more information. Status %i.", flat_params, WEXITSTATUS(ret_code));
-            return -1;
+            return 0;
         }
         pinfo("Returned result from Binary.");
     } else {
-        return -1;
+        return 0;
     }
-    return 0;
+    return 1;
 }
 
 // Main listening function.

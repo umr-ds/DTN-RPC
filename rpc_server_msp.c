@@ -41,9 +41,9 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 
                 // Try to execute the procedure.
 			    uint8_t result_payload[2 + 129 + 1];
-                if (_rpc_server_excecute(result_payload, rp) == 0) {
+                if (_rpc_server_excecute(result_payload, rp)) {
 					// Try MSP
-					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)){
+					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {
 						pinfo("Sending result via MSP.");
 	        			if (msp_send(sock, result_payload, sizeof(result_payload)) == sizeof(result_payload)) {
 							pinfo("RPC execution was successful.");

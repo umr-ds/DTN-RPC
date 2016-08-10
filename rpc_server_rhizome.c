@@ -117,10 +117,10 @@ int _rpc_server_rhizome_process () {
         char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
         // Check, if this file is an RPC packet and if it is not from but for the client.
-        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
+        int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
 		int not_my_file = 0;
 		if (recipient) {
-        	not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
 		} else {
 			not_my_file = 1;
 		}
@@ -173,7 +173,7 @@ int _rpc_server_rhizome_process () {
 
                     // Try to execute the procedure.
 				    uint8_t result_payload[2 + 129 + 1];
-	                if (_rpc_server_excecute(result_payload, rp) == 0) {
+	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
                         pinfo("RPC execution was successful.");

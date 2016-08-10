@@ -47,15 +47,15 @@ int _rpc_check_cli (char *arg, char *option, char *abbrev) {
 	char lng_abbrev[1 + strlen(abbrev)];
 	sprintf(lng_abbrev, "-%s", abbrev);
 	// Check if arg is --<option> or -<abbrev>
-	int option_res = strncmp(arg, lng_option, strlen(lng_option)) == 0;
-	int abbrev_res = strncmp(arg, lng_abbrev, strlen(lng_abbrev)) == 0;
+	int option_res = !strncmp(arg, lng_option, strlen(lng_option));
+	int abbrev_res = !strncmp(arg, lng_abbrev, strlen(lng_abbrev));
 
 	return option_res || abbrev_res;
 }
 
 int main (int argc, char **argv) {
 	// First, check if servald is running.
-	if (server_pid() == 0) {
+	if (!server_pid()) {
 		pfatal("Servald not running. Aborting.");
 		return -1;
 	}
@@ -98,10 +98,10 @@ int main (int argc, char **argv) {
 	else if (_rpc_check_cli(argv[1], "call", "c")) {
 		// Get the index of the '--' seperator
 		int offset = 0;
-		if (strcmp(argv[2], "--") == 0) {
-			offset = 3;
-		} else {
+		if (strcmp(argv[2], "--")) {
 			offset = 4;
+		} else {
+			offset = 3;
 		}
 
 		// Parse params.
@@ -111,7 +111,7 @@ int main (int argc, char **argv) {
 
 		// Serval has a function, where the string "broadcast" gets parsed to SID_BROADCAST.
 		// If we get the string "any", we set it to "braodcast" and let Serval do the rest.
-		if (strncmp(sidhex, "any", strlen("any")) == 0) {
+		if (!strncmp(sidhex, "any", strlen("any"))) {
 			sidhex = "broadcast";
 		}
 		sid_t sid;

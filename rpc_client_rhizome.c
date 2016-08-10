@@ -16,7 +16,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    goto clean_rhizome_client_call_all;
 	}
 
-	while (received == 0) {
+	while (!received) {
 	    // Remove everything from the cURL memory.
 	    _rpc_curl_reinit_memory(&curl_result_memory);
 
@@ -54,8 +54,8 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
 	    // Check, if this file is an RPC packet and if it is not from but for the client.
-	    int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
-	    int not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+	    int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
+	    int not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
 
 	    if (service_is_rpc  && not_my_file) {
 	        // Free everyhing, again.

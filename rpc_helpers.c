@@ -134,7 +134,7 @@ int _rpc_sid_is_reachable (sid_t sid) {
 
 			// If the record (aka SID) is reachable, and the record is the desired SID, return 1 and clean up.
 			if ((record->reachable == REACHABLE || record->reachable == REACHABLE_SELF)
-					&& cmp_sid_t(&record->sid, &sid) == 0) {
+					&& !cmp_sid_t(&record->sid, &sid)) {
 				mdp_close(mdp_sockfd);
 				return 1;
 			}
@@ -212,12 +212,12 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
 			sprintf(rpc_cmp_name, "f_%s", rpc_name);
 
 	        // Check, if this file is an RPC packet and if it is not from but for the client.
-	        int service_is_rpc = strncmp(service, "RPC", strlen("RPC")) == 0;
-	        int filename_is_right = strncmp(name, rpc_cmp_name, strlen(rpc_cmp_name)) == 0;
-	        int right_client = strncmp(alloca_tohex_sid_t(SID_BROADCAST), sid, strlen(sid)) == 0 || strncmp(sender, sid, strlen(sid)) == 0;
+	        int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
+	        int filename_is_right = !strncmp(name, rpc_cmp_name, strlen(rpc_cmp_name));
+	        int right_client = !strncmp(alloca_tohex_sid_t(SID_BROADCAST), sid, strlen(sid)) || !strncmp(sender, sid, strlen(sid));
 			int not_my_file = 0;
 			if (recipient) {
-	        	not_my_file = recipient != NULL && strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid)) == 0;
+	        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
 			} else {
 				not_my_file = 1;
 			}
@@ -278,6 +278,6 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
 
 int _rpc_str_is_filehash (char *hash) {
 	int len_ok = strlen(hash) == 128;
-	int is_hex = hash[strspn(hash, "0123456789ABCDEF")] == 0;
+	int is_hex = !hash[strspn(hash, "0123456789ABCDEF")];
 	return len_ok && is_hex;
 }
