@@ -1,5 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(servalrpc, 0.1)
+AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_MACRO_DIR([m4])
 : ${CFLAGS=""}
 AC_PROG_CC
@@ -24,7 +25,7 @@ AS_IF([test "x$have_lseek64_t" = "xno" -a "x$ac_cv_sizeof_off_t" != x8 ], [
 ])
 
 AC_CHECK_HEADERS(
-    curl/curl.h \
+	curl/curl.h \
 	stddef.h \
 	stdint.h \
 	stdio.h \
@@ -40,26 +41,26 @@ AC_CHECK_HEADERS(
 	jni.h \
 	alloca.h \
 	sys/un.h \
-    strings.h \
-    unistd.h \
-    string.h \
-    arpa/inet.h \
-    sys/socket.h \
-    sys/mman.h \
-    sys/time.h \
-    sys/ucred.h \
-    sys/stat.h \
-    sys/vfs.h \
-    signal.h \
-    poll.h \
-    netdb.h \
-    linux/netlink.h \
-    linux/rtnetlink.h \
-    net/if.h \
-    netinet/in.h \
-    ifaddrs.h \
-    ucred.h \
-    sys/sockio.h
+	strings.h \
+	unistd.h \
+	string.h \
+	arpa/inet.h \
+	sys/socket.h \
+	sys/mman.h \
+	sys/time.h \
+	sys/ucred.h \
+	sys/stat.h \
+	sys/vfs.h \
+	signal.h \
+	poll.h \
+	netdb.h \
+	linux/netlink.h \
+	linux/rtnetlink.h \
+	net/if.h \
+	netinet/in.h \
+	ifaddrs.h \
+	ucred.h \
+	sys/sockio.h
 )
 
 dnl Lazy way of checking for Linux
