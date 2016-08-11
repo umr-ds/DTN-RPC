@@ -3457,6 +3457,60 @@ fi
 
 
 
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((section_seg))" >&5
+$as_echo_n "checking for __attribute__((section_seg))... " >&6; }
+if ${ax_cv_have_var_attribute_section_seg+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    int foo __attribute__((section("__DATA,name"))) = 0;
+                    extern int __start_name __asm("section$start$__DATA$__name");
+                    extern int __stop_name __asm("section$stop$__DATA$__name");
+
+int
+main ()
+{
+
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_var_attribute_section_seg=no
+else
+  ax_cv_have_var_attribute_section_seg=yes
+fi
+else
+  ax_cv_have_var_attribute_section_seg=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_var_attribute_section_seg" >&5
+$as_echo "$ax_cv_have_var_attribute_section_seg" >&6; }
+
+    if test yes = $ax_cv_have_var_attribute_section_seg; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_VAR_ATTRIBUTE_SECTION_SEG 1
+_ACEOF
+
+fi
+
+
+
+
 for ac_func in bcopy bzero bcmp
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`

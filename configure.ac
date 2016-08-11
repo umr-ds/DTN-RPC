@@ -13,6 +13,7 @@ AX_GCC_FUNC_ATTRIBUTE(malloc)
 AX_GCC_FUNC_ATTRIBUTE(unused)
 AX_GCC_FUNC_ATTRIBUTE(used)
 AX_GCC_VAR_ATTRIBUTE(section)
+AX_GCC_VAR_ATTRIBUTE(section_seg)
 
 AC_CHECK_FUNCS([bcopy bzero bcmp])
 AC_CHECK_SIZEOF([off_t])
