@@ -21,13 +21,12 @@ char* _rpc_flatten_params (int paramc, char **params, char *delim) {
 
 // Function for writing arbitary data to a temporary file. CALLER HAS TO REMOVE IT!
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
-    // Create tmp file.
-    char *UNUSED(tmp_tmpnam_res) = tmpnam(file_name);
-    // Open the file.
-    FILE *tmp_file = fopen(file_name, "wb+");
-    // Write the data.
+    // Create a filedescriptor and open the file.
+    int tmp_file_fd = mkstemp(file_name);
+    FILE *tmp_file = fdopen(tmp_file_fd, "wb+");
+    // Write conten.
     size_t written_size = fwrite(content, 1, len, tmp_file);
-    // Close the file.
+    // Close, cleanup.
     fclose(tmp_file);
     return written_size;
 }
@@ -36,7 +35,7 @@ size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len) {
 int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *filepath) {
 	int result = 0;
     // Construct the manifest and write it to the manifest file. We have to treat it differently if the call is braodcasted.
-	char tmp_manifest_file_name[L_tmpnam];
+	char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
 	if (is_sid_t_broadcast(sid)) {
 		int manifest_size = strlen("service=RPC\nname=f_\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
 		char manifest_str[manifest_size];

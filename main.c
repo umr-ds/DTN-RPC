@@ -3,6 +3,9 @@
 // This is needed, since this string is defined in another main.c. If we would link against this main.c, we would have trouble,
 // since it is not possible to have multiple definitions of the same method, especially multiple main methods.
 char crash_handler_clue[1024] = "no clue";
+// This two structs are required, too. There is some problem with the linux linker. It does not find these structs. macOS workin fine.
+struct http_handler __start_httpd[0];
+struct http_handler __stop_httpd[0];
 
 // Small function to open the keyring.
 void _open_keyring () {

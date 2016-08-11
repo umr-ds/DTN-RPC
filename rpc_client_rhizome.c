@@ -131,12 +131,12 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     // One extra byte for string termination.
     uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
     _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
-    char tmp_payload_file_name[L_tmpnam];
+    char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 
     // Construct the manifest and write it to the manifest file.
 	// We have to treat it differently if the call should be braodcasted. In this case no recipient is required.
-	char tmp_manifest_file_name[L_tmpnam];
+	char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
 	if (is_sid_t_broadcast(sid)) {
 		int manifest_size = strlen("service=RPC\nname=\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
 		char manifest_str[manifest_size];
