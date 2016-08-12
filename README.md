@@ -2,15 +2,19 @@
 This documentation provides all needed information to use RPCs via Serval.
 
 ## Building
-At this point this software was only tested on macOS El Capitan. This will be changed in future.
-
 There is only one requirement, `libcurl`. On most systems this is already installed.
 
 For building ServalRPC run the following commands in the ServalRPC folder:
+
 ```
-./configure
+./make-lib.sh [<prefix>]
+./configure [--prefix=<prefix>]
 make
 ```
+
+The first command will build a static library with all needed Serval parts. Therefore the Serval DNA will be downloaded and compiled. Then all required object files are packed to a static `.a` library. Finally everything will be cleaned up.
+
+If your Serval instance was compiled with a `--prefix`, both the prefix for `make-lib.sh` and for `configure` has to be the same!
 
 ## Usage
 To use ServalRPC the Serval daemon has to run.
