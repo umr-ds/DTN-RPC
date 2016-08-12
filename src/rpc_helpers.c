@@ -132,7 +132,7 @@ int _rpc_sid_is_reachable (sid_t sid) {
 			offset += sizeof(struct overlay_route_record);
 
 			// If the record (aka SID) is reachable, and the record is the desired SID, return 1 and clean up.
-			if ((record->reachable == REACHABLE || record->reachable == REACHABLE_SELF)
+			if ((record->reachable == REACHABLE_INDIRECT || record->reachable == REACHABLE_UNICAST || record->reachable == REACHABLE_BROADCAST || record->reachable == REACHABLE_SELF)
 					&& !cmp_sid_t(&record->sid, &sid)) {
 				mdp_close(mdp_sockfd);
 				return 1;
