@@ -2259,6 +2259,8 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
+ac_config_files="$ac_config_files src/Makefile"
+
 
 : ${CFLAGS=""}
 ac_ext=c
@@ -3105,6 +3107,206 @@ fi
 
 
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((alloc_size))" >&5
+$as_echo_n "checking for __attribute__((alloc_size))... " >&6; }
+if ${ax_cv_have_func_attribute_alloc_size+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    void *foo(int a) __attribute__((alloc_size(1)));
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_func_attribute_alloc_size=no
+else
+  ax_cv_have_func_attribute_alloc_size=yes
+fi
+else
+  ax_cv_have_func_attribute_alloc_size=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_func_attribute_alloc_size" >&5
+$as_echo "$ax_cv_have_func_attribute_alloc_size" >&6; }
+
+    if test yes = $ax_cv_have_func_attribute_alloc_size; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_FUNC_ATTRIBUTE_ALLOC_SIZE 1
+_ACEOF
+
+fi
+
+
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((error))" >&5
+$as_echo_n "checking for __attribute__((error))... " >&6; }
+if ${ax_cv_have_func_attribute_error+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    int foo( void ) __attribute__((error("")));
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_func_attribute_error=no
+else
+  ax_cv_have_func_attribute_error=yes
+fi
+else
+  ax_cv_have_func_attribute_error=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_func_attribute_error" >&5
+$as_echo "$ax_cv_have_func_attribute_error" >&6; }
+
+    if test yes = $ax_cv_have_func_attribute_error; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_FUNC_ATTRIBUTE_ERROR 1
+_ACEOF
+
+fi
+
+
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((format))" >&5
+$as_echo_n "checking for __attribute__((format))... " >&6; }
+if ${ax_cv_have_func_attribute_format+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    int foo(const char *p, ...) __attribute__((format(printf, 1, 2)));
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_func_attribute_format=no
+else
+  ax_cv_have_func_attribute_format=yes
+fi
+else
+  ax_cv_have_func_attribute_format=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_func_attribute_format" >&5
+$as_echo "$ax_cv_have_func_attribute_format" >&6; }
+
+    if test yes = $ax_cv_have_func_attribute_format; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_FUNC_ATTRIBUTE_FORMAT 1
+_ACEOF
+
+fi
+
+
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((malloc))" >&5
+$as_echo_n "checking for __attribute__((malloc))... " >&6; }
+if ${ax_cv_have_func_attribute_malloc+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    void *foo( void ) __attribute__((malloc));
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_func_attribute_malloc=no
+else
+  ax_cv_have_func_attribute_malloc=yes
+fi
+else
+  ax_cv_have_func_attribute_malloc=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_func_attribute_malloc" >&5
+$as_echo "$ax_cv_have_func_attribute_malloc" >&6; }
+
+    if test yes = $ax_cv_have_func_attribute_malloc; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_FUNC_ATTRIBUTE_MALLOC 1
+_ACEOF
+
+fi
+
+
+
+
+
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((unused))" >&5
 $as_echo_n "checking for __attribute__((unused))... " >&6; }
 if ${ax_cv_have_func_attribute_unused+:} false; then :
@@ -3196,6 +3398,60 @@ $as_echo "$ax_cv_have_func_attribute_used" >&6; }
 
 cat >>confdefs.h <<_ACEOF
 #define HAVE_FUNC_ATTRIBUTE_USED 1
+_ACEOF
+
+fi
+
+
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((section))" >&5
+$as_echo_n "checking for __attribute__((section))... " >&6; }
+if ${ax_cv_have_var_attribute_section+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    int foo __attribute__((section("name"))) = 0;
+                    extern int __start_name;
+                    extern int __stop_name;
+
+int
+main ()
+{
+
+
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+                                      if test -s conftest.err; then :
+  ax_cv_have_var_attribute_section=no
+else
+  ax_cv_have_var_attribute_section=yes
+fi
+else
+  ax_cv_have_var_attribute_section=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have_var_attribute_section" >&5
+$as_echo "$ax_cv_have_var_attribute_section" >&6; }
+
+    if test yes = $ax_cv_have_var_attribute_section; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_VAR_ATTRIBUTE_SECTION 1
 _ACEOF
 
 fi
@@ -3707,21 +3963,21 @@ if test "x$have_lseek64_t" = "xno" -a "x$ac_cv_sizeof_off_t" != x8 ; then :
 fi
 
 for ac_header in curl/curl.h \
-		stddef.h \
-		stdint.h \
-		tdio.h \
-		errno.h \
-		stdlib.h \
-		stdarg.h \
-		sys/types.h \
-		linux/if.h \
-		ctype.h \
-		fcntl.h \
-		inttypes.h \
-		limits.h \
-		jni.h \
-		alloca.h \
-		sys/un.h \
+	stddef.h \
+	stdint.h \
+	stdio.h \
+	errno.h \
+	stdlib.h \
+	stdarg.h \
+	sys/types.h \
+	linux/if.h \
+	ctype.h \
+	fcntl.h \
+	inttypes.h \
+	limits.h \
+	jni.h \
+	alloca.h \
+	sys/un.h \
     strings.h \
     unistd.h \
     string.h \
@@ -3732,6 +3988,7 @@ for ac_header in curl/curl.h \
     sys/ucred.h \
     sys/stat.h \
     sys/vfs.h \
+    signal.h \
     poll.h \
     netdb.h \
     linux/netlink.h \
@@ -3759,6 +4016,167 @@ if test "x$ac_cv_header_linux_if_h" = xyes; then :
   $as_echo "#define USE_ABSTRACT_NAMESPACE 1" >>confdefs.h
 
 fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sqrtf in -lm" >&5
+$as_echo_n "checking for sqrtf in -lm... " >&6; }
+if ${ac_cv_lib_m_sqrtf+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lm  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char sqrtf ();
+int
+main ()
+{
+return sqrtf ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_m_sqrtf=yes
+else
+  ac_cv_lib_m_sqrtf=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_m_sqrtf" >&5
+$as_echo "$ac_cv_lib_m_sqrtf" >&6; }
+if test "x$ac_cv_lib_m_sqrtf" = xyes; then :
+  LDFLAGS="$LDFLAGS -lm"
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for callrpc in -lnsl" >&5
+$as_echo_n "checking for callrpc in -lnsl... " >&6; }
+if ${ac_cv_lib_nsl_callrpc+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnsl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char callrpc ();
+int
+main ()
+{
+return callrpc ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_nsl_callrpc=yes
+else
+  ac_cv_lib_nsl_callrpc=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_nsl_callrpc" >&5
+$as_echo "$ac_cv_lib_nsl_callrpc" >&6; }
+if test "x$ac_cv_lib_nsl_callrpc" = xyes; then :
+  LDFLAGS="$LDFLAGS -lnsl"
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lsocket" >&5
+$as_echo_n "checking for socket in -lsocket... " >&6; }
+if ${ac_cv_lib_socket_socket+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lsocket  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char socket ();
+int
+main ()
+{
+return socket ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_socket_socket=yes
+else
+  ac_cv_lib_socket_socket=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_socket_socket" >&5
+$as_echo "$ac_cv_lib_socket_socket" >&6; }
+if test "x$ac_cv_lib_socket_socket" = xyes; then :
+  LDFLAGS="$LDFLAGS -lsocket"
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlopen in -ldl" >&5
+$as_echo_n "checking for dlopen in -ldl... " >&6; }
+if ${ac_cv_lib_dl_dlopen+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlopen ();
+int
+main ()
+{
+return dlopen ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_dl_dlopen=yes
+else
+  ac_cv_lib_dl_dlopen=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dl_dlopen" >&5
+$as_echo "$ac_cv_lib_dl_dlopen" >&6; }
+if test "x$ac_cv_lib_dl_dlopen" = xyes; then :
+  LDFLAGS="$LDFLAGS -ldl"
+fi
+
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking linker -z relro option" >&5
 $as_echo_n "checking linker -z relro option... " >&6; }
@@ -4559,6 +4977,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
+    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

@@ -1,0 +1,32 @@
+# Makefile.in for ServalRPC
+prefix=@prefix@
+sysconfdir=@sysconfdir@
+
+# Set compiler
+CC = @CC@
+
+# Set local libs, paths and curl here, everything else programmatically
+LDFLAGS = -L. -lservalrpc -lcurl @LDFLAGS@ @LIBS@
+
+# Set CFLAGS procramatically
+CFLAGS = @CFLAGS@
+# Include search paths
+CFLAGS += -iquote../includes -iquote../includes/serval -iquote../includes/serval/sqlite -iquote../includes/serval/nacl
+# sysconfdir definition
+CFLAGS += -DSYSCONFDIR="\"$(sysconfdir)\""
+# Optimisation, position indipendent code, security check for functions like printf, and make it impossible to compile potential vulnerable code.
+# Also add security checks for functions like memcpy, strcpy, etc.
+CFLAGS += -O3 -fPIC -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+# SQLite (disable data functions, disable interactive compiling, no deprecated functions, disable extension loading functions, no virtual tables, no authorization)
+CFLAGS += -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_DATETIME_FUNCS -DSQLITE_OMIT_COMPILEOPTION_DIAGS -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_VIRTUALTABLE -DSQLITE_OMIT_AUTHORIZATION
+# Enable some functions defined in POSIX 600 standard and definitions normally not available or deprecated in macOS (i.e bzero).
+CFLAGS += -D_XOPEN_SOURCE=600 -D_DARWIN_C_SOURCE -D_GNU_SOURCE
+# Enable all and even more warnings, treat them as errors and show all errors.
+CFLAGS += -Wall -Wextra -Werror
+# Some additional definitions.
+DEFS = @DEFS@
+
+SRCS = $(wildcard *.c)
+
+all: $(SRCS)
+	$(CC) -o ../servalrpc $^ $(CFLAGS) $(DEFS) $(LDFLAGS)

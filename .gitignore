@@ -1,2 +1,9 @@
 servalrpc
 *.dSYM
+m4/
+src/libservalrpc.a
+config.log
+config.status
+configure.ac
+Makefile
+src/Makefile
