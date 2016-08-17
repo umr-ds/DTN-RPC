@@ -1,6 +1,6 @@
 /**** General. ****/
-#define RPC_CLIENT_MODE_TRANSPARTEN		0
-#define RPC_CLIENT_MODE_NON_TRANSPARENT	0
+#define RPC_CLIENT_MODE_TRANSPARENT		0
+#define RPC_CLIENT_MODE_NON_TRANSPARENT	1
 
 int client_mode;
 

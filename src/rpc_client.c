@@ -98,7 +98,7 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 
 	else {
         // Call the rpc directly over msp.
-		client_mode = RPC_CLIENT_MODE_TRANSPARTEN;
+		client_mode = RPC_CLIENT_MODE_TRANSPARENT;
         int call_return = rpc_client_call_msp(server_sid, rpc_name, paramc, params);
 
 		if (call_return == -1) {

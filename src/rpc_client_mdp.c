@@ -3,7 +3,7 @@
 // MDP call function. For broadcasts.
 int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
-	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARTEN ? RPC_CLIENT_MODE_TRANSPARTEN : RPC_CLIENT_MODE_NON_TRANSPARENT;
+	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARENT ? RPC_CLIENT_MODE_TRANSPARENT : RPC_CLIENT_MODE_NON_TRANSPARENT;
 	// Open the mdp socket.
 	int mdp_sockfd;
 	if ((mdp_sockfd = mdp_socket()) < 0) {
@@ -47,9 +47,9 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 		// Since MDP is (like UDP) stateless, there is no way to figure out if the connection is allive (there is no connection).
 		// Furthermore we do not have a server SID since we use MDP for transparent usage. So we can not check if the server is
 		// reachable via MDP. Thus just wait (at development point) 3 seconds. If no result appears, we start the Rhizome listener.
-		// But only if this was a transparetn call. Otherwise we just return.
+		// But only if this was a transparent call. Otherwise we just return.
         if ((double) (time(NULL) - mdp_wait_timeout) >= 3.0) {
-			if (client_mode == RPC_CLIENT_MODE_TRANSPARTEN) {
+			if (client_mode == RPC_CLIENT_MODE_TRANSPARENT) {
             	pwarn("Didn't receive result via MSP. Listening Rhizome.");
 				mdp_close(mdp_sockfd);
 				return _rpc_client_rhizome_listen();
