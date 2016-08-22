@@ -16,6 +16,7 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	mdp_header.local.sid = BIND_PRIMARY;
 	mdp_header.remote.sid = BIND_ALL;
 	mdp_header.remote.port = MDP_PORT_RPC;
+    mdp_header.flags = MDP_FLAG_NO_CRYPT;
 
 	// Bind the my SID to the socket.
 	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0) {
@@ -50,7 +51,6 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 		// But only if this was a transparent call. Otherwise we just return.
         if ((double) (time(NULL) - mdp_wait_timeout) >= 3.0) {
 			if (client_mode == RPC_CLIENT_MODE_TRANSPARENT) {
-                pdebug("Mode: %i, Trans: %i, Non: %i", client_mode, RPC_CLIENT_MODE_TRANSPARENT, RPC_CLIENT_MODE_NON_TRANSPARENT);
             	pwarn("Didn't receive result via MDP. Listening Rhizome.");
 				mdp_close(mdp_sockfd);
 				return _rpc_client_rhizome_listen();
