@@ -3,7 +3,7 @@
 // MDP call function. For broadcasts.
 int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
-	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARENT ? RPC_CLIENT_MODE_TRANSPARENT : RPC_CLIENT_MODE_NON_TRANSPARENT;
+    client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARENT ? RPC_CLIENT_MODE_TRANSPARENT : RPC_CLIENT_MODE_NON_TRANSPARENT;
 	// Open the mdp socket.
 	int mdp_sockfd;
 	if ((mdp_sockfd = mdp_socket()) < 0) {
@@ -50,10 +50,12 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 		// But only if this was a transparent call. Otherwise we just return.
         if ((double) (time(NULL) - mdp_wait_timeout) >= 3.0) {
 			if (client_mode == RPC_CLIENT_MODE_TRANSPARENT) {
-            	pwarn("Didn't receive result via MSP. Listening Rhizome.");
+                pdebug("Mode: %i, Trans: %i, Non: %i", client_mode, RPC_CLIENT_MODE_TRANSPARENT, RPC_CLIENT_MODE_NON_TRANSPARENT);
+            	pwarn("Didn't receive result via MDP. Listening Rhizome.");
 				mdp_close(mdp_sockfd);
 				return _rpc_client_rhizome_listen();
 			} else {
+                pfatal("Didn't receive result via MSP. Aborting.");
 				mdp_close(mdp_sockfd);
 				return -1;
 			}
@@ -65,7 +67,7 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
         if (fds->revents & POLLIN) {
 			struct mdp_header mdp_recv_header;
 
-			// Set the playoadsize.
+			// Set the payloadsize.
 			uint8_t recv_payload[MDP_MTU];
 			ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
 
@@ -81,7 +83,7 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	            pinfo("Server accepted call.");
 	            received = 1;
 	        } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
-				// If we reveived the result, copy it to the result array.
+				// If we received the result, copy it to the result array.
 	            pinfo("Answer received.");
 	            memcpy(rpc_result, &recv_payload[2], incoming_len - 2);
 				if (_rpc_str_is_filehash((char *) rpc_result)) {
