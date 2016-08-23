@@ -45,7 +45,6 @@ int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **param
 // General call function. For transparent usage.
 int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params) {
 	received = 0;
-	client_mode = RPC_CLIENT_MODE_TRANSPARENT;
     if (is_sid_t_broadcast(server_sid)) {
 		// Broadcast the RPC.
 		int call_return = rpc_client_call_mdp_broadcast(rpc_name, paramc, params);

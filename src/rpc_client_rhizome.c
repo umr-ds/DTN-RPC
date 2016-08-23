@@ -117,8 +117,8 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 
 // Delay-tolerant call function.
 int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params) {
-	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
-	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARENT ? RPC_CLIENT_MODE_TRANSPARENT : RPC_CLIENT_MODE_NON_TRANSPARENT;
+    // Make sure the result array is empty.
+    memset(rpc_result, 0, sizeof(rpc_result));
     int return_code = -1;
 	received = 0;
 

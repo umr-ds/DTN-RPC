@@ -1,8 +1,4 @@
-/**** General. ****/
-#define RPC_CLIENT_MODE_TRANSPARENT		1
-#define RPC_CLIENT_MODE_NON_TRANSPARENT	2
-
-int client_mode;
+/**** General part. ****/
 
 // Functions
 int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **params, int paramc);

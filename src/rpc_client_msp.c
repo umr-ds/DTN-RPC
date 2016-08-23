@@ -50,8 +50,8 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 	if (!_rpc_sid_is_reachable(sid)) {
 		return -1;
 	}
-	// Set the client_mode to non-transparent if it is not set yet, but leaf it as is otherwise.
-	client_mode = client_mode == RPC_CLIENT_MODE_TRANSPARENT ? RPC_CLIENT_MODE_TRANSPARENT : RPC_CLIENT_MODE_NON_TRANSPARENT;
+    // Make sure the result array is empty.
+    memset(rpc_result, 0, sizeof(rpc_result));
 	current_sid = alloca_tohex_sid_t(sid);
 	current_rpc = rpc_name;
 
@@ -104,21 +104,13 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
     while (received == 0 || received == 1) {
 		// If the socket is closed, start the Rhizome listener, but only if this was a transparetn call. Otherwise we just return.
 		// No reachablility check required since the server was reachabel once. This check below is sufficient.
-		if (msp_socket_is_null(sock) && !msp_socket_is_data(sock) && client_mode == RPC_CLIENT_MODE_TRANSPARENT) {
-			if (client_mode == RPC_CLIENT_MODE_TRANSPARENT) {
-				pwarn("MSP socket closed. Starting Rhizome listener.");
-				// Clean up.
-			    sock = MSP_SOCKET_NULL;
-			    msp_close_all(mdp_fd);
-			    mdp_close(mdp_fd);
-				return _rpc_client_rhizome_listen();
-			} else {
-				// Clean up.
-			    sock = MSP_SOCKET_NULL;
-			    msp_close_all(mdp_fd);
-			    mdp_close(mdp_fd);
-				return -1;
-			}
+		if (msp_socket_is_null(sock) && !msp_socket_is_data(sock)) {
+			pfatal("MSP socket closed. Aborting.");
+            // Clean up.
+            sock = MSP_SOCKET_NULL;
+            msp_close_all(mdp_fd);
+            mdp_close(mdp_fd);
+            return -1;
 		}
 
         // Process MSP socket
