@@ -41,6 +41,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 
                 // Try to execute the procedure.
 			    uint8_t result_payload[2 + 129 + 1];
+                memset(result_payload, 0, 132);
                 if (_rpc_server_excecute(result_payload, rp)) {
 					// Try MSP
 					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {
@@ -64,8 +65,10 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
                 pwarn("Not offering desired RPC. Ignoring.");
                 ret = len;
             }
+            _rpc_free_rp(rp);
         }
     }
+
     return ret;
 }
 

@@ -43,9 +43,9 @@ The binary has to be located under `$SERVAL_ETC_PATH/rpc_bin`.
 
 Next it has to be an executable. So, make sure all shebangs are given, the `x`-bit is set and so on.
 
-Also important is, that the binary should return either `0` on succes or `1` otherwise. All other return codes cause the server to abort execution.
+Also important is, that the binary should return `0` on success. All other return codes cause the server to abort execution. Negative return values are not allowed.
 
-Since the execution is done with pipes, the result has to be `echo`\'d. Whis will be parsed and sent back.
+Since the execution is done with pipes, the result has to be `echo`'d. Whis will be parsed and sent back.
 
 ##### Example
 An implementation of the declaration above could be as follows:

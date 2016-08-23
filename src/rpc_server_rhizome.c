@@ -16,6 +16,7 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
     _rpc_write_tmp_file(tmp_payload_file_name, payload, 130);
 
     // Init the cURL stuff.
+    curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
@@ -56,6 +57,7 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
         _rpc_curl_free_memory(&curl_result_memory);
         remove(tmp_manifest_file_name);
         remove(tmp_payload_file_name);
+        curl_global_cleanup();
 
     return return_code;
 }
@@ -65,6 +67,7 @@ int _rpc_server_rhizome_process () {
     int return_code = 0;
 
 	// Init the cURL stuff.
+    curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
@@ -173,6 +176,7 @@ int _rpc_server_rhizome_process () {
 
                     // Try to execute the procedure.
 				    uint8_t result_payload[2 + 129 + 1];
+                    memset(result_payload, 0, 132);
 	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
@@ -182,6 +186,7 @@ int _rpc_server_rhizome_process () {
                     pwarn("Not offering desired RPC. Ignoring.");
                     return_code = -1;
                 }
+                _rpc_free_rp(rp);
             }
         }
     }
@@ -190,6 +195,7 @@ int _rpc_server_rhizome_process () {
         curl_easy_cleanup(curl_handler);
     clean_rhizome_server_listener:
         _rpc_curl_free_memory(&curl_result_memory);
+        curl_global_cleanup();
 
     return return_code;
 }

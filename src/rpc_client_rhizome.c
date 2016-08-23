@@ -5,6 +5,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	int return_code = -1;
 
 	// Init the cURL stuff.
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 	CURL *curl_handler = NULL;
 	CURLcode curl_res;
 	struct CurlResultMemory curl_result_memory;
@@ -109,6 +110,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    curl_slist_free_all(header);
 	    curl_easy_cleanup(curl_handler);
 	    _rpc_curl_free_memory(&curl_result_memory);
+		curl_global_cleanup();
 
 	return return_code;
 }
@@ -151,6 +153,7 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 
 
     // Init the cURL stuff.
+	curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
@@ -195,6 +198,7 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
         _rpc_curl_free_memory(&curl_result_memory);
         remove(tmp_manifest_file_name);
         remove(tmp_payload_file_name);
+		curl_global_cleanup();
 
     return return_code;
 }

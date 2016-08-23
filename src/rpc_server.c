@@ -58,7 +58,8 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
 
     // Parse the parameter count.
     rp.paramc.paramc_n = read_uint16(&payload[2]);
-	rp.paramc.paramc_s = calloc(sizeof(char), 6);
+    // uint16 -> 2¹⁶ = 65k = 5 chars = 6 chars with \0, so allocate 6 bytes.
+	rp.paramc.paramc_s = calloc(6, sizeof(char));
 	sprintf(rp.paramc.paramc_s, "%u", read_uint16(&payload[2]));
 
     // Cast the payload starting at byte 5 to string.
@@ -70,8 +71,9 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     char *tok = strtok(ch_payload, "|");
 
     // Set the name of the procedure.
-    rp.name = calloc(strlen(tok), sizeof(char));
+    rp.name = calloc(strlen(tok) + 1, sizeof(char));
     strncpy(rp.name, tok, strlen(tok));
+    strncpy(&rp.name[strlen(tok)], "\0", 1);
 
     // Allocate memory for the parameters and split the remaining payload at '|'
     // until it's it fully consumed. Store the parameters as strings in the designated struct field.
@@ -80,8 +82,8 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     rp.params = calloc(rp.paramc.paramc_n, sizeof(char*));
     tok = strtok(NULL, "|");
     while (tok) {
-        rp.params[i] = calloc(strlen(tok), sizeof(char));
-        strncpy(rp.params[i++], tok, strlen(tok));
+        rp.params[i] = calloc(strlen(tok) + 1, sizeof(char));
+        strcpy(rp.params[i++], tok);
         tok = strtok(NULL, "|");
     }
     return rp;
@@ -143,6 +145,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
             return 0;
         }
         pinfo("Returned result from Binary.");
+        free(flat_params);
     } else {
         return 0;
     }

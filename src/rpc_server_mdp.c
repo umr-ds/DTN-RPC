@@ -65,6 +65,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 
             // Try to execute the procedure.
 			uint8_t result_payload[2 + 129 + 1];
+			memset(result_payload, 0, 132);
 			if (_rpc_server_excecute(result_payload, rp)) {
 				// Send result back after successful execution.
 				if (_rpc_sid_is_reachable(header.remote.sid)) {
@@ -83,6 +84,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
         } else {
             pwarn("Not offering desired RPC. Ignoring.");
         }
+		_rpc_free_rp(rp);
     }
 
 	return 0;

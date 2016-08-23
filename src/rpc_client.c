@@ -33,9 +33,11 @@ int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **param
 
 		char *flat = _rpc_flatten_params(paramc, (char **) new_params, "|");
 		strcpy(flat_params, flat);
+		free(flat);
 	} else {
 		char *flat = _rpc_flatten_params(paramc, params, "|");
 		strcpy(flat_params, flat);
+		free(flat);
 	}
 	return 0;
 }

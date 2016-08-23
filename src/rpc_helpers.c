@@ -10,10 +10,10 @@ char* _rpc_flatten_params (int paramc, char **params, char *delim) {
     }
 
     // Iterate over all params and store them in a single string, seperated with '|'
-    char *flat_params  = calloc(params_size + paramc, sizeof(char));
+    char *flat_params  = calloc(params_size + paramc + 1, sizeof(char));
     for (i = 0; i < paramc; i++) {
         strcat(flat_params, delim);
-        strncat(flat_params, params[i], strlen(params[i]));
+        strcat(flat_params, params[i]);
     }
 
     return flat_params;
@@ -49,6 +49,7 @@ int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *fil
 	}
 
     // Init the cURL stuff.
+    curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
@@ -94,6 +95,7 @@ int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *fil
 		curl_easy_cleanup(curl_handler);
 		_rpc_curl_free_memory(&curl_result_memory);
 		remove(tmp_manifest_file_name);
+        curl_global_cleanup();
 
     return result;
 }
@@ -148,6 +150,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
     int return_code = 0;
 
 	// Init the cURL stuff.
+    curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl_handler = NULL;
     CURLcode curl_res;
     struct CurlResultMemory curl_result_memory;
@@ -271,13 +274,26 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
         curl_easy_cleanup(curl_handler);
     clean_rhizome_server_listener:
         _rpc_curl_free_memory(&curl_result_memory);
+        curl_global_cleanup();
 
     return return_code;
 }
 
+// Function to check if a string is a filehash.
+// Very basic. Check, if it has 128 hex chars.
 int _rpc_str_is_filehash (char *hash) {
 	int len_ok = strlen(hash) == 128;
 	int is_hex = !hash[strspn(hash, "0123456789ABCDEF")];
 	return len_ok && is_hex;
 }
 
+// Function to free a procedure struct.
+void _rpc_free_rp (struct RPCProcedure rp) {
+    free(rp.name);
+    free(rp.paramc.paramc_s);
+    int i;
+    for (i = 0; i < rp.paramc.paramc_n; i++) {
+        free(rp.params[i]);
+    }
+    //free(rp.params);
+}
