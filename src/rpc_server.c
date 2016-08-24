@@ -21,22 +21,23 @@ int _rpc_server_offering (struct RPCProcedure *rp) {
 
     char *line = NULL;
     size_t len = 0;
-    int ret = -1;
+    int ret = 0;
 
     // Read the file line by line.
     while (getline(&line, &len, conf_file) != -1) {
+        ret = 0;
         // Split the line at the first space to get the return type.
         char *name = strtok(line, " ");
         // If the name matches with the received name ...
         if (!strncmp(name, rp->name, strlen(name))) {
-            ret = 0;
+            ret = 1;
         }
 
         // Split the line at the second space to get the paramc.
         char *paramc = strtok(NULL, " ");
 		// ... and the parameter count, the server offers this RPC.
-        if (!ret && !strncmp(paramc, rp->paramc.paramc_s, strlen(paramc))) {
-            ret = 1;
+        if (ret && !strncmp(paramc, rp->paramc.paramc_s, strlen(paramc))) {
+            ret = 2;
 			break;
         }
     }
