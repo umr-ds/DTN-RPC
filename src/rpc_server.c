@@ -175,6 +175,7 @@ int rpc_server_listen () {
         }
 		// Process the three main parts.
 		_rpc_server_msp_process();
+		_rpc_server_msp_run_rp();
 		_rpc_server_mdp_process();
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");
@@ -203,6 +204,7 @@ int rpc_server_listen_msp () {
         }
 		// Process MSP.
 		_rpc_server_msp_process();
+		_rpc_server_msp_run_rp();
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }
