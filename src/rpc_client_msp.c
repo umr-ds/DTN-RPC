@@ -137,13 +137,13 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 		rewind(fp);
 		// Read the file to a buffer.
 		char file_buffer[file_len];
-		fread(file_buffer, file_len, 1, fp);
+		size_t UNUSED(read_size) = fread(file_buffer, file_len, 1, fp);
 		// Close the file.
 		fclose(fp);
 
 		// Get current time for identifying the file at server side.
 		time_t send_time = time(NULL);
-		uint8_t *data;
+		uint8_t *data = NULL;
 		size_t i;
 		size_t remaining_size = file_len;
 		for (i = 0; i < file_len; i+=1024, remaining_size-=1024) {
