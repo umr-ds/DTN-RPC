@@ -43,7 +43,7 @@ int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int received;
-uint8_t *rpc_result[512];
+uint8_t *rpc_result[MDP_MTU];
 
 // Transparent
 int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params);
@@ -53,4 +53,3 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params);
 int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);
 // Any
 int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params);
-

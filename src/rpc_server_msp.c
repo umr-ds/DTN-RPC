@@ -46,8 +46,8 @@ int _rpc_server_msp_run_rp () {
 		}
 
 		// Try to execute the procedure.
-		uint8_t result_payload[2 + 129 + 1];
-		memset(result_payload, 0, 132);
+		uint8_t result_payload[MDP_MTU];
+		memset(result_payload, 0, MDP_MTU);
 		if (_rpc_server_excecute(result_payload, rp)) {
 			// Try MSP
 			if (!msp_socket_is_null(sock_msp) && msp_socket_is_data(sock_msp)) {
@@ -177,4 +177,3 @@ void _rpc_server_msp_cleanup () {
 	mdp_close(mdp_fd_msp);
 	msp_processing(&next_time);
 }
-

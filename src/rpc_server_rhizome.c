@@ -175,8 +175,8 @@ int _rpc_server_rhizome_process () {
                     _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.
-				    uint8_t result_payload[2 + 129 + 1];
-                    memset(result_payload, 0, 132);
+				    uint8_t result_payload[MDP_MTU];
+                    memset(result_payload, 0, MDP_MTU);
 	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
@@ -199,4 +199,3 @@ int _rpc_server_rhizome_process () {
 
     return return_code;
 }
-

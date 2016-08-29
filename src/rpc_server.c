@@ -127,8 +127,8 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        char *UNUSED(tmp_fgets_res) = fgets((char *)&result_payload[2], 129, pipe_fp);
-		memcpy(&result_payload[131], "\0", 1);
+        char *UNUSED(tmp_fgets_res) = fgets((char *)&result_payload[2], MDP_MTU, pipe_fp);
+		memcpy(&result_payload[MDP_MTU], "\0", 1);
 
 		if (!access((char *) &result_payload[2], F_OK)) {
 			// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
@@ -249,4 +249,3 @@ int rpc_server_listen_mdp_broadcast () {
     }
 	return 0;
 }
-
