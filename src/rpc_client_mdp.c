@@ -43,7 +43,14 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
     fds->fd = mdp_sockfd;
     fds->events = POLLIN;
 
+	time_t start_time = time(NULL);
+	int wait_time = 10;
 	while (received == 0 || received == 1) {
+
+		if (time(NULL) - start_time > wait_time) {
+		    mdp_close(mdp_sockfd);
+			return -1;
+		}
 		// Poll the socket
         poll(fds, 1, 500);
 
@@ -85,4 +92,3 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 
 	return received;
 }
-
