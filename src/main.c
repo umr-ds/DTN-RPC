@@ -149,7 +149,7 @@ int main (int argc, char **argv) {
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
 			pinfo("Client mode: MDP (broadcast)");
-			ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
+			ret_code = rpc_client_call_mdp(sid, name, nfields + 1, params);
 		}
 		// From here the RPC gets parsed.
 		else if (_rpc_check_cli(argv[2], "-", "-")) {

@@ -91,20 +91,18 @@ If the result of an procedure is a file, the path to that file has to be returne
 To call a RPC there are multiple ways. This could be either *directly*, if a RPC server is known or *any*. The third mode is *transparent*, where the best solution is chosen.
 
 #### Transparent
-The *transparent* mode is called via the function `int rpc_client_call (const sid_t server_sid, const char *rpc_name, const int paramc, const char **params)`. The `server_sid` is the SID of the server. The `rpc_name` has to be the RPC name and the `paramc` is the number of parameters needed. Finally all needed parameters has to be provides as `char **` (array of strings).
+The *transparent* mode is called via the function `int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params)`. The `server_sid` is the SID of the server. The `rpc_name` has to be the RPC name and the `paramc` is the number of parameters needed. Finally all needed parameters has to be provides as `char **` (array of strings).
 
-If the Server is not available via MSP the procedure will be send via Rhizome.
-
-The result will be always encrypted, regardless of the mode.
+If the Server is not available via MSP the procedure will be send via Rhizome. If the `server_sid` is `any` or `broadcast` the call will be sent via MDP or Rhizome, depending on server availability.
 
 #### Direct
-The *direct* mode is triggert with `int rpc_client_call_msp (const sid_t sid, const char *rpc_name, const int paramc, const char **params)`. The parameters are the same as above. Note: if the server is not available, the RPC will not be executed. But if the connections gets lost while waiting for the result, the result will be delivered via Rhizome.
+The *direct* mode is triggert with `int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params)`. The parameters are the same as above. Note: if the server is not available, the RPC will be sent via Rhizome. If the connections gets lost while waiting for the result, the result will be delivered via Rhizome.
 
 #### Any
-With `int rpc_client_call_mdp_broadcast (const char *rpc_name, const int paramc, const char **params);` the call will be broadcasted via MDP.
+With `int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params);` the call will be broadcasted via MDP. **Note:** The `server_sid` has to be `SID_BROADCAST`, otherwise the call will not be broadcasted but sent directly using MDP.
 
 #### Delay-tolerant
-With `int rpc_client_call_rhizome (const sid_t sid, const char *rpc_name, const int paramc, const char **params);` the call will be issued via Rhizome. If you want to broadcast the call via Rhizome, set the `sid` to `SID_BROADCAST`.
+With `int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);` the call will be issued via Rhizome. If you want to broadcast the call via Rhizome, set the `sid` to `SID_BROADCAST`.
 
 ---
 

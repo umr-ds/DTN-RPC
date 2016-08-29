@@ -1,7 +1,12 @@
 #include "rpc.h"
 
-// MDP call function. For broadcasts.
-int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
+// MDP call function.
+int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params) {
+	// If the server_sid is not broadcast, we have to check, if the server is available.
+	if (!is_sid_t_broadcast(server_sid) && !_rpc_sid_is_reachable(server_sid)) {
+		return -1;
+	}
+
 	// Make sure the result array is empty.
 	memset(rpc_result, 0, sizeof(rpc_result));
 	// Open the mdp socket.
@@ -14,9 +19,11 @@ int rpc_client_call_mdp_broadcast (char *rpc_name, int paramc, char **params) {
 	struct mdp_header mdp_header;
 	bzero(&mdp_header, sizeof(mdp_header));
 	mdp_header.local.sid = BIND_PRIMARY;
-	mdp_header.remote.sid = BIND_ALL;
+	mdp_header.remote.sid = server_sid;
 	mdp_header.remote.port = MDP_PORT_RPC;
-    mdp_header.flags = MDP_FLAG_NO_CRYPT;
+	if (is_sid_t_broadcast(server_sid)) {
+	    mdp_header.flags = MDP_FLAG_NO_CRYPT;
+	}
 
 	// Bind the my SID to the socket.
 	if (mdp_bind(mdp_sockfd, &mdp_header.local) < 0) {
