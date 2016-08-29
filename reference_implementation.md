@@ -19,7 +19,7 @@ Make sure to offer a RPC the right way (see #Server).
 ## Client
 ### SYNOPSIS
 ```
-servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]
+servalrpc -c [-s | -r | -d] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]
 ```
 ### DESCRIPTION
 `servalrpc -c` calls a remote procedure.
@@ -27,6 +27,8 @@ servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [
 `-s, --msp` Call via MSP
 
 `-r, --rhizome` Call via Rhizome
+
+`-d, --mdp` Call via MDP
 
 `(<server_sid> | broadcast | any)` Either the RPC server SID or `broadcast` or `any`, if the call should be broadcasted
 

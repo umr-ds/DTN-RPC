@@ -147,16 +147,14 @@ int main (int argc, char **argv) {
 		}  else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
+		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
+			pinfo("Client mode: MDP (broadcast)");
+			ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
 		}
 		// From here the RPC gets parsed.
 		else if (_rpc_check_cli(argv[2], "-", "-")) {
-			if (is_sid_t_broadcast(sid)) {
-				pinfo("Client mode: MDP (broadcasts)");
-				ret_code = rpc_client_call_mdp_broadcast(name, nfields + 1, params);
-			} else {
-				pinfo("Client mode: Transparent.");
-				ret_code = rpc_client_call(sid, name, nfields + 1, params);
-			}
+			pinfo("Client mode: Transparent.");
+			ret_code = rpc_client_call(sid, name, nfields + 1, params);
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");
 			return -1;
