@@ -44,40 +44,6 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
     return ret;
 }
 
-// Function to flatten the parameters and replace the first parameter if it is a local path.
-// The difference here is that the file will not be stored in the Rhizome store. Instead,
-// it get' sent via MSP.
-int _rpc_client_msp_replace_if_path (char *flat_params, char **params, int paramc) {
-	if (!access(params[0], F_OK)) {
-		FILE *fp = fopen(params[0], "r");
-		fseek(fp, 0L, SEEK_END);
-		size_t file_len = ftell(fp);
-		rewind(fp);
-		fclose(fp);
-		char file_size[256];
-		sprintf(file_size, "size:%lu", file_len);
-
-		char *new_params[paramc];
-		new_params[0] = file_size;
-
-		int i;
-		for (i = 1; i < paramc; i++) {
-			new_params[i] = (char *) params[i];
-		}
-
-		char *flat = _rpc_flatten_params(paramc, (char **) new_params, "|");
-		strcpy(flat_params, flat);
-		free(flat);
-		return 1;
-	} else {
-		char *flat = _rpc_flatten_params(paramc, params, "|");
-		strcpy(flat_params, flat);
-		free(flat);
-		return 2;
-	}
-	return 0;
-}
-
 // Direct call function.
 int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 	// Check if the sid is even reachable before doing anything else.
@@ -119,47 +85,21 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 
 	// Flatten the params and replace the first parameter if it is a local path.
 	char flat_params[512];
-	int first_param_type = _rpc_client_msp_replace_if_path(flat_params, params, paramc);
-	size_t base_payload_size = 2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1;
+	_rpc_client_replace_if_path(flat_params, rpc_name, params, paramc);
 
-	// Send the call packet.
-	uint8_t payload[base_payload_size];
+	// Construct the payload and write it to the payload file.
+	// |------------------------|-------------------|----------------------------|--------------------------|
+	// |-- 2 byte packet type --|-- 2 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
+	// |------------------------|-------------------|----------------------------|--------------------------|
+	// 1 extra byte for string termination.
+	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
 	_rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+
+	// Send the payload.
 	msp_send(sock, payload, sizeof(payload));
 
-	// If we identified the first parameter as a file, we have to send it via MSP.
-	if (first_param_type == 1) {
-		// Open the file.
-		FILE *fp = fopen(params[0], "r");
-		// Get the size.
-		fseek(fp, 0L, SEEK_END);
-		size_t file_len = ftell(fp);
-		rewind(fp);
-		// Read the file to a buffer.
-		char file_buffer[file_len];
-		size_t UNUSED(read_size) = fread(file_buffer, file_len, 1, fp);
-		// Close the file.
-		fclose(fp);
 
-		// Get current time for identifying the file at server side.
-		time_t send_time = time(NULL);
-		uint8_t *data = NULL;
-		size_t i;
-		size_t remaining_size = file_len;
-		for (i = 0; i < file_len; i+=1024, remaining_size-=1024) {
-			// If there is less than 1024 bytes left from the file, we only send
-			// the remaining data. 1024 bytes otherwise.
-			size_t bytes_to_send = remaining_size < 1024 ? remaining_size : 1024;
-			data = realloc(data, 10 + bytes_to_send);
-			memset(data, 0, 10 + bytes_to_send);
-			write_uint16(&data[0], RPC_PKT_CALL_CHUNK);
-			write_uint64(&data[2], send_time);
-			memcpy(&data[10], (uint8_t *)&file_buffer[i], bytes_to_send);
-			msp_send(sock, data, 10 + bytes_to_send);
-		}
-	}
-
-    // While we have not received the answer...
+	// While we have not received the answer...
     while (received == 0 || received == 1) {
 		// If the socket is closed, start the Rhizome listener, but only if this was a transparetn call. Otherwise we just return.
 		// No reachablility check required since the server was reachabel once. This check below is sufficient.

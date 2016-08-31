@@ -27,9 +27,9 @@
 
 // Packet types
 #define RPC_PKT_CALL            0
-#define RPC_PKT_CALL_CHUNK      1
-#define RPC_PKT_CALL_ACK        2
-#define RPC_PKT_CALL_RESPONSE   3
+#define RPC_PKT_CALL_ACK        1
+#define RPC_PKT_CALL_RESPONSE   2
+
 
 /**** Server part. ****/
 // Transparent
