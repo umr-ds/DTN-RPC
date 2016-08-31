@@ -307,42 +307,12 @@ void _rpc_free_rp (struct RPCProcedure rp) {
 void _rpc_rhizome_get_bundle (BUNDLE *bundle, char *curl_return) {
     char *tmp_str = strtok(curl_return, "\n");
 
-	while (strncmp(tmp_str, "version", 7)){
-		tmp_str = strtok(NULL, "\n");
-	}
-    char *tmp_version = &strstr(tmp_str, "=")[1];
-
     while (strncmp(tmp_str, "id", 2)){
         tmp_str = strtok(NULL, "\n");
     }
 	char *tmp_id = &strstr(tmp_str, "=")[1];
 
-    while (strncmp(tmp_str, "BK", 2)){
-        tmp_str = strtok(NULL, "\n");
-    }
-    char *tmp_bk = &strstr(tmp_str, "=")[1];
-
-    while (strncmp(tmp_str, "date", 4)){
-        tmp_str = strtok(NULL, "\n");
-    }
-    char *tmp_date = &strstr(tmp_str, "=")[1];
-
-    while (strncmp(tmp_str, "filesize", 8)){
-        tmp_str = strtok(NULL, "\n");
-    }
-    char *tmp_filesize = &strstr(tmp_str, "=")[1];
-
-    while (strncmp(tmp_str, "filehash", 8)){
-        tmp_str = strtok(NULL, "\n");
-    }
-    char *tmp_filehash = &strstr(tmp_str, "=")[1];
-
-	strcpy(bundle->version, tmp_version);
     strcpy(bundle->id, tmp_id);
-    strcpy(bundle->bk, tmp_bk);
-    strcpy(bundle->date, tmp_date);
-    strcpy(bundle->filesize, tmp_filesize);
-    strcpy(bundle->filehash, tmp_filehash);
 }
 
 // Function to keep track of bundles.
@@ -383,8 +353,8 @@ void _rpc_rhizome_invalidate () {
 	curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
 	curl_easy_setopt(curl_handler, CURLOPT_VERBOSE, 1L);
 
-	char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
-	_rpc_write_tmp_file(tmp_payload_file_name, " ", 1);
+//	char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
+//	_rpc_write_tmp_file(tmp_payload_file_name, "", 0);
 
 	int i;
 	for (i = 0; i < 16; i++) {
@@ -394,12 +364,19 @@ void _rpc_rhizome_invalidate () {
 
 		_rpc_curl_reinit_memory(&curl_result_memory);
 
+		// Deleting a file in Serval is not possible. To achive this, you have to update the bundle with an empty payload.
+		// The call for CLI looks like this:
+		// servald rhizome add file --bundle=<id> <author_sid> /dev/null /dev/null "" !version !filesize !filehash !date
+		// This updates the file with the id <id>. The author has to be the same. Since we do not provide any payload or manifest,
+		// both are /dev/null. The bundle-key is empty (""). The exclamation marks are parsed to null. This is some Serval
+		// magic. NOTE: To use this, you have to set "set +H" in your shell (I think only bash?). Otherwise the ! would be treated
+		// as history expansion macros.
+		// The upadte feature does not seem to work via RESTful. I opened a ticket, maybe it will work in future.
 		char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
-		int manifest_size = strlen("id=\nBK=\nauthor=\nversion=\nfilesize=\ndate=\n") + ID_S + BK_S + 64 + VERSION_S + 1 + DATE_S;
+		int manifest_size = strlen("id=\nauthor=\nfilesize=\n") + ID_S + 64;
 		char manifest_str[manifest_size];
-		sprintf(manifest_str, "id=%s\nBK=%s\nauthor=%s\nversion=%s\nfilesize=%i\ndate=%s\n", bundles[i].id, bundles[i].bk, alloca_tohex_sid_t(my_subscriber->sid), bundles[i].version, 1, bundles[i].date);
+		sprintf(manifest_str, "id=%s\nauthor=%s\nfilesize=%i\n", bundles[i].id, alloca_tohex_sid_t(my_subscriber->sid), 0);
 		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
-
         pdebug("%s", manifest_str);
 
 
@@ -408,8 +385,7 @@ void _rpc_rhizome_invalidate () {
 					 CURLFORM_CONTENTTYPE, "rhizome/manifest; format=text+binarysig", CURLFORM_END);
 
 		// Add the payload form.
-		curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name,
-					 CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
+		curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_COPYCONTENTS, "", CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
 
 		// Add the forms to the request.
 		curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
@@ -431,6 +407,6 @@ void _rpc_rhizome_invalidate () {
 		curl_easy_cleanup(curl_handler);
 	clean_rhizome_invalidate:
 		_rpc_curl_free_memory(&curl_result_memory);
-		remove(tmp_payload_file_name);
+		//remove(tmp_payload_file_name);
 		curl_global_cleanup();
 }

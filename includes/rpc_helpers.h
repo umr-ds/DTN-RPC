@@ -19,13 +19,9 @@
 #define FILESIZE_S  17
 #define FILEHASH_S  129
 
+// Keep this struct. Maybe for needed extension.
 typedef struct {
-    char version[VERSION_S];
     char id[ID_S];
-    char bk[BK_S];
-    char date[DATE_S];
-    char filesize[FILESIZE_S];
-    char filehash[FILEHASH_S];
 } BUNDLE;
 
 BUNDLE bundles[16];
