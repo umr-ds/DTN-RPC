@@ -176,4 +176,5 @@ void _rpc_server_msp_cleanup () {
 	msp_close_all(mdp_fd_msp);
 	mdp_close(mdp_fd_msp);
 	msp_processing(&next_time);
+	_rpc_rhizome_invalidate();
 }

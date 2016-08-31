@@ -49,6 +49,12 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
         goto clean_rhizome_server_response_all;
     }
 
+    // Add this file to ids for invalidation later on.
+    BUNDLE bundle;
+    memset(&bundle, 0, sizeof(bundle));
+    _rpc_rhizome_get_bundle(&bundle, (char *) curl_result_memory.memory);
+    _rpc_rhizome_append_to_bundles(bundle);
+
     // Clean up.
     clean_rhizome_server_response_all:
         curl_slist_free_all(header);
@@ -198,4 +204,9 @@ int _rpc_server_rhizome_process () {
         curl_global_cleanup();
 
     return return_code;
+}
+
+// Close MDP socket.
+void _rpc_server_rhizome_cleanup () {
+    _rpc_rhizome_invalidate();
 }

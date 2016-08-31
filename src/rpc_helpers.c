@@ -82,6 +82,12 @@ int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *fil
         goto clean_rhizome_insert_all;
     }
 
+	// Add this file to ids for invalidation later on.
+	BUNDLE bundle;
+	memset(&bundle, 0, sizeof(bundle));
+	_rpc_rhizome_get_bundle(&bundle, (char *) curl_result_memory.memory);
+	_rpc_rhizome_append_to_bundles(bundle);
+
 	// Search for the last '=' and skip it to get the filehash.
 	char *response_filehash = &strrchr((char *) curl_result_memory.memory, '=')[1];
 	// Store the filehash in the variable and make sure it is \0 terminated.
@@ -295,5 +301,136 @@ void _rpc_free_rp (struct RPCProcedure rp) {
     for (i = 0; i < rp.paramc.paramc_n; i++) {
         free(rp.params[i]);
     }
-    //free(rp.params);
+}
+
+// Function for parsing the insertion result to get the bundle_id
+void _rpc_rhizome_get_bundle (BUNDLE *bundle, char *curl_return) {
+    char *tmp_str = strtok(curl_return, "\n");
+
+	while (strncmp(tmp_str, "version", 7)){
+		tmp_str = strtok(NULL, "\n");
+	}
+    char *tmp_version = &strstr(tmp_str, "=")[1];
+
+    while (strncmp(tmp_str, "id", 2)){
+        tmp_str = strtok(NULL, "\n");
+    }
+	char *tmp_id = &strstr(tmp_str, "=")[1];
+
+    while (strncmp(tmp_str, "BK", 2)){
+        tmp_str = strtok(NULL, "\n");
+    }
+    char *tmp_bk = &strstr(tmp_str, "=")[1];
+
+    while (strncmp(tmp_str, "date", 4)){
+        tmp_str = strtok(NULL, "\n");
+    }
+    char *tmp_date = &strstr(tmp_str, "=")[1];
+
+    while (strncmp(tmp_str, "filesize", 8)){
+        tmp_str = strtok(NULL, "\n");
+    }
+    char *tmp_filesize = &strstr(tmp_str, "=")[1];
+
+    while (strncmp(tmp_str, "filehash", 8)){
+        tmp_str = strtok(NULL, "\n");
+    }
+    char *tmp_filehash = &strstr(tmp_str, "=")[1];
+
+	strcpy(bundle->version, tmp_version);
+    strcpy(bundle->id, tmp_id);
+    strcpy(bundle->bk, tmp_bk);
+    strcpy(bundle->date, tmp_date);
+    strcpy(bundle->filesize, tmp_filesize);
+    strcpy(bundle->filehash, tmp_filehash);
+}
+
+// Function to keep track of bundles.
+void _rpc_rhizome_append_to_bundles (BUNDLE bundle) {
+	int i;
+	for (i = 0; i < 16; i++) {
+		if (strlen(bundles[i].id) != 0) {
+			continue;
+		}
+
+		memcpy(&bundles[i], &bundle, sizeof(bundle));
+		break;
+	}
+}
+
+// Function to remove a file from store
+void _rpc_rhizome_invalidate () {
+	// Init the cURL stuff.
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+	CURL *curl_handler = NULL;
+	CURLcode curl_res;
+	struct CurlResultMemory curl_result_memory;
+	_rpc_curl_init_memory(&curl_result_memory);
+	if ((curl_handler = curl_easy_init()) == NULL) {
+		pfatal("Failed to create curl handle in post. Aborting.");
+		goto clean_rhizome_invalidate;
+	}
+
+	// Declare all needed headers forms and URLs.
+	struct curl_slist *header = NULL;
+	struct curl_httppost *formpost = NULL;
+	struct curl_httppost *lastptr = NULL;
+	char *url_insert = "http://localhost:4110/restful/rhizome/insert";
+
+	// Set basic cURL options (see function).
+	_rpc_curl_set_basic_opt(url_insert, curl_handler, header);
+	curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
+	curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
+	curl_easy_setopt(curl_handler, CURLOPT_VERBOSE, 1L);
+
+	char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
+	_rpc_write_tmp_file(tmp_payload_file_name, " ", 1);
+
+	int i;
+	for (i = 0; i < 16; i++) {
+		if (strlen(bundles[i].id) == 0) {
+			continue;
+		}
+
+		_rpc_curl_reinit_memory(&curl_result_memory);
+
+		char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
+		int manifest_size = strlen("id=\nBK=\nauthor=\nversion=\nfilesize=\ndate=\n") + ID_S + BK_S + 64 + VERSION_S + 1 + DATE_S;
+		char manifest_str[manifest_size];
+		sprintf(manifest_str, "id=%s\nBK=%s\nauthor=%s\nversion=%s\nfilesize=%i\ndate=%s\n", bundles[i].id, bundles[i].bk, alloca_tohex_sid_t(my_subscriber->sid), bundles[i].version, 1, bundles[i].date);
+		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
+
+        pdebug("%s", manifest_str);
+
+
+		// Add the manifest form.
+		curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "manifest", CURLFORM_FILE, tmp_manifest_file_name,
+					 CURLFORM_CONTENTTYPE, "rhizome/manifest; format=text+binarysig", CURLFORM_END);
+
+		// Add the payload form.
+		curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "payload", CURLFORM_FILE, tmp_payload_file_name,
+					 CURLFORM_CONTENTTYPE, "application/octet-stream", CURLFORM_END);
+
+		// Add the forms to the request.
+		curl_easy_setopt(curl_handler, CURLOPT_HTTPPOST, formpost);
+
+		// Perfom request, which means insert the RPC file to the store.
+		curl_res = curl_easy_perform(curl_handler);
+		if (curl_res != CURLE_OK) {
+			pfatal("CURL failed (post Rhizome call): %s. Aborting.", curl_easy_strerror(curl_res));
+			goto clean_rhizome_invalidate_all;
+		}
+
+		//remove(tmp_manifest_file_name);
+
+	}
+
+	// Clean up.
+	clean_rhizome_invalidate_all:
+		curl_slist_free_all(header);
+		curl_easy_cleanup(curl_handler);
+	clean_rhizome_invalidate:
+		_rpc_curl_free_memory(&curl_result_memory);
+		remove(tmp_payload_file_name);
+		curl_global_cleanup();
 }

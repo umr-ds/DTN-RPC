@@ -28,6 +28,7 @@ void _rpc_free_rp (struct RPCProcedure rp);
 /**** Rhizome part. ****/
 int _rpc_server_rhizome_process ();
 int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload);
+void _rpc_server_rhizome_cleanup ();
 
 /**** MDP part. ****/
 int _rpc_server_mdp_setup ();

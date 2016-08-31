@@ -190,6 +190,7 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
     sock = MSP_SOCKET_NULL;
     msp_close_all(mdp_fd);
     mdp_close(mdp_fd);
+	_rpc_rhizome_invalidate();
 
     return received;
 }

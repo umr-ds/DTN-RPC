@@ -187,6 +187,12 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
         goto clean_rhizome_client_call_all;
     }
 
+	// Add this file to ids for invalidation later on.
+	BUNDLE bundle;
+	memset(&bundle, 0, sizeof(bundle));
+	_rpc_rhizome_get_bundle(&bundle, (char *) curl_result_memory.memory);
+	_rpc_rhizome_append_to_bundles(bundle);
+
 	// Listen until we receive something.
 	return_code = _rpc_client_rhizome_listen(sid, rpc_name);
 
@@ -196,10 +202,10 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
         curl_easy_cleanup(curl_handler);
     clean_rhizome_client_call:
         _rpc_curl_free_memory(&curl_result_memory);
+		_rpc_rhizome_invalidate();
         remove(tmp_manifest_file_name);
         remove(tmp_payload_file_name);
 		curl_global_cleanup();
 
     return return_code;
 }
-

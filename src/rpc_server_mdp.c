@@ -103,4 +103,5 @@ void _rpc_server_mdp_process () {
 // Close MDP socket.
 void _rpc_server_mdp_cleanup () {
 	mdp_close(mdp_sock);
+	//_rpc_rhizome_invalidate();
 }

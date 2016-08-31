@@ -96,6 +96,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 
 	// Cleanup.
     mdp_close(mdp_sockfd);
+	_rpc_rhizome_invalidate();
 
 	return received;
 }

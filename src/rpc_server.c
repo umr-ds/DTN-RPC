@@ -181,7 +181,7 @@ int rpc_server_listen () {
 			pfatal("Rhizome listening failed. Aborting.");
 			server_running = 1;
 		}
-        // To not drive the CPU crazy, check only once a second for new packets.
+        // To not drive the CPU crazy, check only once a second for new calls.
         sleep(1);
     }
 	return 0;
@@ -216,6 +216,11 @@ int rpc_server_listen_rhizome () {
 	server_mode = RPC_SERVER_MODE_RHIZOME;
 	// Run RPC server.
     while (server_running < 1) {
+        if (server_running == 1) {
+            // Clean everythin up.
+            _rpc_server_rhizome_cleanup();
+            break;
+        }
 		// Process Rhizome
         if (_rpc_server_rhizome_process() == -1) {
 			pfatal("Rhizome listening failed. Aborting.");

@@ -12,11 +12,32 @@
 #define pwarn(fmt, ...)     printf(RPC_WARN fmt RPC_RESET "\n", ##__VA_ARGS__);
 #define pdebug(fmt, ...)    printf(RPC_DEBUG fmt RPC_RESET "\n", ##__VA_ARGS__);
 
+#define VERSION_S   14
+#define ID_S        65
+#define BK_S        65
+#define DATE_S      14
+#define FILESIZE_S  17
+#define FILEHASH_S  129
+
+typedef struct {
+    char version[VERSION_S];
+    char id[ID_S];
+    char bk[BK_S];
+    char date[DATE_S];
+    char filesize[FILESIZE_S];
+    char filehash[FILEHASH_S];
+} BUNDLE;
+
+BUNDLE bundles[16];
+
 // Functions.
 char* _rpc_flatten_params (int paramc, char **params, char *delim);
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
 int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *filepath);
 int _rpc_download_file (char *fpath, char *rpc_name, char *client_sid);
+void _rpc_rhizome_invalidate ();
+void _rpc_rhizome_append_to_bundles (BUNDLE bundle);
+void _rpc_rhizome_get_bundle (BUNDLE *bundle, char *curl_return);
 
 int _rpc_sid_is_reachable (sid_t sid);
 
