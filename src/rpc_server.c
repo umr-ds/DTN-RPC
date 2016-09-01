@@ -84,7 +84,13 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     tok = strtok(NULL, "|");
     while (tok) {
         rp.params[i] = calloc(strlen(tok) + 1, sizeof(char));
-        strcpy(rp.params[i++], tok);
+        // In case of a complex call via MSP, the last parameter has the "::" seperator at the end.
+        // We have to get rid of it.
+        if (!strcmp(&tok[strlen(tok)-2], "::")) {
+            strncpy(rp.params[i++], tok, strlen(tok) - 2);
+        } else {
+            strcpy(rp.params[i++], tok);
+        }
         tok = strtok(NULL, "|");
     }
     return rp;

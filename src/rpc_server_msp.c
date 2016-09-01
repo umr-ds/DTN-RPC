@@ -31,6 +31,37 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 				return len;
 			}
 
+            // If the first parameter is "file", we have to wait, until the file arrives.
+            if (!strcmp(rp.params[0], "file")) {
+                // Use strstr to jump to the "::" separator.
+                char *file_payload = strstr((char*)&payload[4], "::");
+
+                size_t file_size = read_uint64((unsigned char*)&file_payload[3]);
+                size_t sent_size = read_uint64((unsigned char*)&file_payload[3 + 8]);
+                time_t call_time = read_uint64((unsigned char*)&file_payload[3 + 8 + 8]);
+                char *write_payload = (char*)&file_payload[3 + 8 + 8 + 8];
+
+                char *sender = alloca_tohex_sid_t(rp.caller_sid);
+
+                char rpc_down_name[4 + strlen(rp.name) + sizeof(call_time) + strlen(sender)];
+                sprintf(rpc_down_name, "f_%s_%" PRId64 "_%s", rp.name, call_time, sender);
+
+                char filepath[strlen(RPC_TMP_FOLDER) + strlen(rpc_down_name)];
+                sprintf(filepath, "%s%s", RPC_TMP_FOLDER, rpc_down_name);
+                mkdir(RPC_TMP_FOLDER, 0700);
+
+                FILE* rpc_file = fopen(filepath, "a");
+                fwrite(write_payload, 1, strlen(write_payload), rpc_file);
+                fclose(rpc_file);
+
+                if (file_size != sent_size) {
+                    return len;
+                }
+
+                rp.params[0] = realloc(rp.params[0], strlen(filepath) + 1);
+                strcpy(rp.params[0], filepath);
+            }
+
 			// Check, if we offer this procedure and we should accept the call.
 			if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
 				pinfo("Offering desired RPC. Sending ACK.");
@@ -106,10 +137,10 @@ int _rpc_server_msp_setup () {
 
 // MSP listener.
 void _rpc_server_msp_process () {
-	// Process MSP socket.
+    // Receive the data from the socket.
+    msp_recv(mdp_fd_msp);
+	// Process eventuelly received data.
 	msp_processing(&next_time);
-	// Receive the data from the socket.
-	msp_recv(mdp_fd_msp);
 }
 
 // MSP Cleanup.
