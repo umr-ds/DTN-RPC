@@ -3,6 +3,22 @@
 char *current_rpc = "";
 char *current_sid = "";
 
+int not_called = 1;
+
+char *data_buffer = NULL;
+char *flat_params = NULL;
+size_t file_size = 0;
+size_t remaining_size = 0;
+size_t sent_size = 0;
+
+// Headersize: 2 byte packet type, 2 byte #parameters, rpc_name strlen bytes, params strlen bytes
+// 3 bytes "::\0" seperator, 8 bytes filesize, 8 bytes already sent (including this packet), 8 bytes timestamp
+// This is only for the complex case.
+size_t base_header_size = 0;
+size_t header_size = 0;
+size_t payload_size = 0;
+time_t call_time = 0;
+
 // Function to flatten the parameters and replace the first parameter if it is a local path.
 int _rpc_client_msp_replace_if_path (char *flat_params, char **params, int paramc) {
     if (!access(params[0], F_OK)) {
@@ -106,78 +122,48 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
     // Set the handler to handle incoming packets.
     msp_set_handler(sock, _rpc_client_msp_handler, NULL);
 
-	// Flatten the params and replace the first parameter if it is a local path.
-	char flat_params[512];
-    _rpc_client_msp_replace_if_path(flat_params, params, paramc);
+    // While we have not received the answer...
+    while (received == 0 || received == 1) {
 
-    // Check if the first parameter after the first | is "file".
-    // If it is, send it over MSP. Otherwise do the normal stuff.
-    if (!strncmp(&flat_params[1], "file", 4)) {
-        FILE *payload_file = fopen(params[0], "r");
-        // Get the size.
-        fseek(payload_file, 0L, SEEK_END);
-        size_t file_size = ftell(payload_file);
-        rewind(payload_file);
+        if (not_called) {
+            not_called = 0;
+            // Flatten the params and replace the first parameter if it is a local path.
+            flat_params = calloc(512, sizeof(char));
+            _rpc_client_msp_replace_if_path(flat_params, params, paramc);
 
-        // Headersize: 2 byte packet type, 2 byte #parameters, rpc_name strlen bytes, params strlen bytes
-        // 3 bytes "::\0" seperator, 8 bytes filesize, 8 bytes already sent (including this packet), 8 bytes timestamp
-        size_t base_header_size = 2 + 2 + strlen(rpc_name) + strlen(flat_params);
-        size_t header_size = base_header_size + 3 + 8 + 8 + 8;
-        size_t payload_size = 1024 - header_size;
-        time_t call_time = time(NULL);
+            // Check if the first parameter after the first | is "file".
+            // If it is, send it over MSP. Otherwise do the normal stuff.
+            if (!strncmp(&flat_params[1], "file", 4)) {
+                FILE *payload_file = fopen(params[0], "r");
+                // Get the size.
+                fseek(payload_file, 0L, SEEK_END);
+                file_size = ftell(payload_file);
+                rewind(payload_file);
 
-        char buffer[payload_size];
-        size_t i;
-        size_t remaining_size = file_size;
-        time_ms_t next_time;
-        for (i = 0; i < file_size; i += payload_size, remaining_size -= payload_size) {
-            // If there is less than payload_size bytes left from the file, we only send
-            // the remaining data. payload_size bytes otherwise.
-            size_t bytes_to_send = remaining_size < payload_size ? remaining_size : payload_size;
+                // Headersize: 2 byte packet type, 2 byte #parameters, rpc_name strlen bytes, params strlen bytes
+                // 3 bytes "::\0" seperator, 8 bytes filesize, 8 bytes already sent (including this packet), 8 bytes timestamp
+                // This is only for the complex case.
+                base_header_size = 2 + 2 + strlen(rpc_name) + strlen(flat_params);
+                header_size = base_header_size + 3 + 8 + 8 + 8;
+                payload_size = 1024 - header_size;
+                call_time = time(NULL);
 
-            // Read chunk from file.
-            size_t UNUSED(read_size) = fread(buffer, 1, bytes_to_send, payload_file);
+                data_buffer = realloc(data_buffer, file_size);
+                size_t UNUSED(read_size) = fread(data_buffer, 1, file_size, payload_file);
 
-            // Create payload.
-            uint8_t payload[header_size + payload_size];
-            // Fill default values.
-            _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+                fclose(payload_file);
+                remaining_size = file_size;
 
-            // Write "::\0" seperator.
-            memcpy(&payload[base_header_size], (uint8_t *)"::\0", 3);
-            // Write filesize to payload.
-            write_uint64(&payload[base_header_size + 3], file_size);
-            // Write already sent size
-            write_uint64(&payload[base_header_size + 3 + 8], i + bytes_to_send);
-            // Write timestamp
-            write_uint64(&payload[base_header_size + 3 + 8 + 8], call_time);
-            // Copy the buffer to payload.
-            memcpy(&payload[base_header_size + 3 + 8 + 8 + 8], (uint8_t *)buffer, bytes_to_send);
+            } else {
+                uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+                _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
-            // TODO: What, if sock is closed?
-            // Send.
-            msp_send(sock, payload, sizeof(payload));
-
-            msp_processing(&next_time);
-
-            sleep(1);
+                // Send the payload.
+                msp_send(sock, payload, sizeof(payload));
+            }
         }
 
-        fclose(payload_file);
 
-    } else {
-        uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
-        _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
-
-        // Send the payload.
-        msp_send(sock, payload, sizeof(payload));
-    }
-
-
-
-
-	// While we have not received the answer...
-    while (received == 0 || received == 1) {
 		// If the socket is closed, start the Rhizome listener, but only if this was a transparetn call. Otherwise we just return.
 		// No reachablility check required since the server was reachabel once. This check below is sufficient.
 		if (msp_socket_is_null(sock) && !msp_socket_is_data(sock)) {
@@ -188,6 +174,40 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
             mdp_close(mdp_fd);
             return -1;
 		}
+
+        if (remaining_size > 0) {
+
+            //for (sent_size = 0; sent_size < file_size; sent_size += payload_size, remaining_size -= payload_size) {
+
+            // If there is less than payload_size bytes left from the file, we only send
+            // the remaining data. payload_size bytes otherwise.
+            size_t bytes_to_send = remaining_size < payload_size ? remaining_size : payload_size;
+
+            // Create payload.
+            uint8_t payload[header_size + payload_size];
+            // Fill default values.
+            _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+
+            // Write "::\0" seperator.
+            memcpy(&payload[base_header_size], (uint8_t *) "::\0", 3);
+            // Write filesize to payload.
+            write_uint64(&payload[base_header_size + 3], file_size);
+            // Write already sent size
+            write_uint64(&payload[base_header_size + 3 + 8], sent_size + bytes_to_send);
+            // Write timestamp
+            write_uint64(&payload[base_header_size + 3 + 8 + 8], call_time);
+            // Copy the data_buffer to payload.
+            memcpy(&payload[base_header_size + 3 + 8 + 8 + 8], &data_buffer[sent_size], bytes_to_send);
+
+            // Send
+            msp_send(sock, payload, sizeof(payload));
+
+            pdebug("Sent %lu bytes from %lu. Remaining %lu bytes, total sent: %lu. State: %i", bytes_to_send, file_size, remaining_size, sent_size, msp_get_state(sock));
+
+            // Update sizes.
+            sent_size += bytes_to_send;
+            remaining_size -= bytes_to_send;
+        }
 
         // Process MSP socket
         time_ms_t next_time;
@@ -207,6 +227,12 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
     sock = MSP_SOCKET_NULL;
     msp_close_all(mdp_fd);
     mdp_close(mdp_fd);
+    if (data_buffer) {
+        free(data_buffer);
+    }
+    if (flat_params) {
+        free(flat_params);
+    }
 
     return received;
 }
