@@ -64,8 +64,8 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
             mdp_send(mdp_sockfd, &header, ack_payload, sizeof(ack_payload));
 
             // Try to execute the procedure.
-			uint8_t result_payload[MDP_MTU];
-			memset(result_payload, 0, MDP_MTU);
+			uint8_t result_payload[RPC_PKT_SIZE];
+			memset(result_payload, 0, RPC_PKT_SIZE);
 			if (_rpc_server_excecute(result_payload, rp)) {
 				// Send result back after successful execution.
 				if (_rpc_sid_is_reachable(header.remote.sid)) {

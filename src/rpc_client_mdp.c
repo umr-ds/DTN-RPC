@@ -66,7 +66,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 			struct mdp_header mdp_recv_header;
 
 			// Set the payloadsize.
-			uint8_t recv_payload[MDP_MTU];
+			uint8_t recv_payload[RPC_PKT_SIZE];
 			ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
 
 			if (incoming_len < 0) {

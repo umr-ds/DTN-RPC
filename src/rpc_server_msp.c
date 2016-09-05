@@ -40,8 +40,8 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 				ret = msp_send(sock, ack_payload, sizeof(ack_payload));
 
 				// Try to execute the procedure.
-				uint8_t result_payload[2 + 129 + 1];
-				memset(result_payload, 0, 132);
+				uint8_t result_payload[RPC_PKT_SIZE];
+				memset(result_payload, 0, RPC_PKT_SIZE);
 				if (_rpc_server_excecute(result_payload, rp)) {
 					// Try MSP
 					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {

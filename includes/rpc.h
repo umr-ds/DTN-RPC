@@ -30,6 +30,8 @@
 #define RPC_PKT_CALL_ACK        1
 #define RPC_PKT_CALL_RESPONSE   2
 
+#define RPC_PKT_SIZE    MDP_MTU-200
+
 
 /**** Server part. ****/
 // Transparent
@@ -43,7 +45,7 @@ int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int received;
-uint8_t *rpc_result[MDP_MTU];
+uint8_t *rpc_result[RPC_PKT_SIZE];
 
 // Transparent
 int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params);

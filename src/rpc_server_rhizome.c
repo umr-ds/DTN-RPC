@@ -13,7 +13,7 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
 
     // Write the payload to the payload file.
     char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
-    _rpc_write_tmp_file(tmp_payload_file_name, payload, 130);
+    _rpc_write_tmp_file(tmp_payload_file_name, payload, RPC_PKT_SIZE-1);
 
     // Init the cURL stuff.
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -175,8 +175,8 @@ int _rpc_server_rhizome_process () {
                     _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.
-				    uint8_t result_payload[MDP_MTU];
-                    memset(result_payload, 0, MDP_MTU);
+				    uint8_t result_payload[RPC_PKT_SIZE];
+                    memset(result_payload, 0, RPC_PKT_SIZE);
 	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
