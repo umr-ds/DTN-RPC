@@ -39,12 +39,6 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
     _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
-	// Send the payload.
-	if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0) {
-		pfatal("Could not discover packet. Aborting.");
-		return -1;
-	}
-
 	// pollfd for listening for the result via MDP.
 	struct pollfd fds[2];
     fds->fd = mdp_sockfd;
@@ -58,8 +52,17 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 		    mdp_close(mdp_sockfd);
 			return -1;
 		}
+
+		if (received == 0) {
+			// Send the payload.
+			if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0) {
+				pfatal("Could not discover packet. Aborting.");
+				return -1;
+			}
+		}
+
 		// Poll the socket
-        poll(fds, 1, 500);
+        poll(fds, 1, 1000);
 
         // If something arrived, receive it.
         if (fds->revents & POLLIN) {
