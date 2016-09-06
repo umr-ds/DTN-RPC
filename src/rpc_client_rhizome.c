@@ -17,12 +17,41 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    goto clean_rhizome_client_call_all;
 	}
 
+    char *token = NULL;
+    time_t start_time = time(NULL);
+    int wait_time = 20;
 	while (!received) {
-	    // Remove everything from the cURL memory.
+
+        //Wait for 20 seconds for answer (While develpment. Later maybe longer).
+        if (time(NULL) - start_time > wait_time) {
+            // If we hit the timeout, get the number of elements in the result array.
+            int num_answers = _rpc_client_result_get_insert_index();
+            // If the SID is the broadcast id we check if we have at least one answer.
+            if (is_sid_t_broadcast(sid) && num_answers > 0) {
+                return_code = 2;
+                received = 1;
+                break;
+            } else {
+                return_code = -1;
+                goto clean_rhizome_client_call_all;
+            }
+        }
+
+
+        // Remove everything from the cURL memory.
 	    _rpc_curl_reinit_memory(&curl_result_memory);
 
 	    header = NULL;
-	    char *url_get = "http://localhost:4110/restful/rhizome/bundlelist.json";
+        char *url_get = NULL;
+        // If token is null, this is the first iteration. We then need the whole bundlelist.
+        // Afterwards we only get new files since token.
+        if (token) {
+            url_get = calloc(64 + strlen(token), sizeof(char));
+            sprintf(url_get, "http://localhost:4110/restful/rhizome/newsince/%s/bundlelist.json", token);
+        } else {
+            url_get = calloc(54, sizeof(char));
+            sprintf(url_get, "http://localhost:4110/restful/rhizome/bundlelist.json");
+        }
 
 	    // Again, set basic options, ...
 	    _rpc_curl_set_basic_opt(url_get, curl_handler, header);
@@ -37,6 +66,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	        return_code = -1;
 	        goto clean_rhizome_client_call_all;
 	    }
+        free(url_get);
 
 	    // Write the bundlelist to a string for manipulations.
 	    char json_string[(size_t)curl_result_memory.size - 1];
@@ -47,73 +77,135 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    cJSON *incoming_json = cJSON_Parse(json_string);
 	    // ... get the 'rows' entry, ...
 	    cJSON *rows = cJSON_GetObjectItem(incoming_json, "rows");
-	    // ... consider only the recent file, ...
-	    cJSON *recent_file = cJSON_GetArrayItem(rows, 0);
-	    // ... get the 'service', ...
-	    char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
-		// ... the sender from the recent file, ...
-		char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
-	    // ... the recipient from the recent file.
-	    char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
+        // ... get the number of files in the store since token.
+        // If token is NULL, we only want the most recent file.
+        int	num_files = token ? cJSON_GetArraySize(rows) : 1;
 
-	    // Check, if this file is an RPC packet and if it is not from but for the client.
-	    int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
-	    int not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
+        // For every file we got
+        int i;
+        for (i = 0; i < num_files; i++) {
+            // Get the file at position i, ...
+            cJSON *recent_file = cJSON_GetArrayItem(rows, i);
+            // ... get the token, ...
+            token = cJSON_GetArrayItem(recent_file, 0)->valuestring;
+            // ... get the 'service', ...
+            char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+            // ... get the inserttime, ...
+            double inserttime = cJSON_GetArrayItem(recent_file, 6)->valuedouble;
+            // ... the sender from the recent file, ...
+            char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
+            // ... the recipient from the recent file, ...
+            char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
+            // ... the name from the recent file.
+            char *name = cJSON_GetArrayItem(recent_file, 13)->valuestring;
 
-	    if (service_is_rpc  && not_my_file) {
-	        // Free everyhing, again.
-	        _rpc_curl_reinit_memory(&curl_result_memory);
-	        curl_slist_free_all(header);
-	        header = NULL;
+            // Check, if this file is an RPC packet and if it is not from but for the client.
+            int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
+            int not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
+            int name_is_rpc = !strncmp(name, rpc_name, strlen(rpc_name));
+            int not_to_old = time(NULL) - inserttime < 600000;
+            // Parse the sender SID to sid_t
+            sid_t server_sid;
+            str_to_sid_t(&server_sid, sender);
 
-	        // Get the bundle ID of the file which should be decrypted.
-	        char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
-	        char url_decrypt[117];
-	        sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
+            if (service_is_rpc && not_my_file && name_is_rpc && not_to_old) {
+                // Free everyhing, again.
+                _rpc_curl_reinit_memory(&curl_result_memory);
+                curl_slist_free_all(header);
+                header = NULL;
 
-	        _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
+                // Get the bundle ID of the file which should be decrypted.
+                char *bid = cJSON_GetArrayItem(recent_file, 3)->valuestring;
+                char url_decrypt[117];
+                sprintf(url_decrypt, "http://localhost:4110/restful/rhizome/%s/decrypted.bin", bid);
 
-	        // Decrypt the file.
-	        curl_res = curl_easy_perform(curl_handler);
-	        if (curl_res != CURLE_OK) {
-	            pfatal("CURL failed (decrypt Rhizome call): %s.", curl_easy_strerror(curl_res));
-	            return_code = -1;
-	            goto clean_rhizome_client_call_all;
-	        }
+                _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
-	        // Copy the payload for manipulations.
-	        size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
-	        uint8_t recv_payload[filesize];
-	        memcpy(recv_payload, curl_result_memory.memory, filesize);
+                // Decrypt the file.
+                curl_res = curl_easy_perform(curl_handler);
+                if (curl_res != CURLE_OK) {
+                    pfatal("CURL failed (decrypt Rhizome call): %s.", curl_easy_strerror(curl_res));
+                    return_code = -1;
+                    goto clean_rhizome_client_call_all;
+                }
 
-	        if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
-	            // If we got an ACK packet, we wait (for now) 5 more seconds.
-	            pinfo("Received ACK via Rhizome. Waiting.");
-				return_code = 1;
-	        } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
-	            // We got our result!
-	            pinfo("Received result.");
+                // Copy the payload for manipulations.
+                size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
+                uint8_t recv_payload[filesize];
+                memcpy(recv_payload, curl_result_memory.memory, filesize);
 
+                if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
+                    // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
+                    if (is_sid_t_broadcast(sid) && _rpc_client_result_get_sid_index(sid) == -1) {
+                        int position = _rpc_client_result_get_insert_index();
+                        memcpy(&rpc_result[position].server_sid, &server_sid, sizeof(sid_t));
+                    }
+                    pinfo("Server %s accepted call.", sender);
+                    return_code = 1;
+                } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
+                    // If we received the result, copy it to the result array:
+                    pinfo("Answer received from %s.", sender);
+                    // First, see if this SID has already an entry in the result array. If not, skip.
+                    int result_position = -1;
+                    if (is_sid_t_broadcast(sid)) {
+                        result_position = _rpc_client_result_get_sid_index(server_sid);
+                        if (result_position == -1) {
+                            continue;
+                        }
+                    }
 
+                    // If we get an filehash, we have to doneload the file.
+                    if (_rpc_str_is_filehash((char *) &recv_payload[2])) {
+                        // Download the file and get the path.
+                        char fpath[128 + strlen(rpc_name) + 3];
+                        while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 0) sleep(1);
+                        // If the result_position is -1, this was not a "all" call. So we have only one answer.
+                        // We can finish.
+                        if (result_position == -1) {
+                            if (!is_sid_t_broadcast(sid)) {
+                                memcpy(rpc_result[0].content, fpath, 128 + strlen(rpc_name) + 3);
+                                memcpy(&rpc_result[0].server_sid, &server_sid, sizeof(sid_t));
 
-				if (_rpc_str_is_filehash((char *) &recv_payload[2])) {
-					char fpath[128 + strlen(rpc_name) + 3];
-					while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(sid)) != 0) sleep(1);
-					memcpy(&rpc_result[0].content, fpath, 128 + strlen(rpc_name) + 3);
-				} else {
-					memcpy(&rpc_result[0].content, &recv_payload[2], filesize - 2);
-				}
-				sid_t server_sid;
-				str_to_sid_t(&server_sid, sender);
-				memcpy(&rpc_result[0].server_sid, &server_sid, sizeof(sid_t));
-
-
-
-	            return_code = 2;
-	            received = 1;
-	            break;
-	        }
-	    }
+                                return_code = 2;
+                                received = 1;
+                                break;
+                            }
+                        } else {
+                            // Otherwise store the result at the result_position.
+                            memcpy(rpc_result[result_position].content, fpath, 128 + strlen(rpc_name) + 3);
+                            // If the result array is full, we do not have to wait any longer and can finish execution.
+                            if (result_position == 4) {
+                                return_code = 2;
+                                received = 1;
+                                break;
+                            }
+                        }
+                    } else {
+                        // This is the simple case. Just store the payload.
+                        // If the result_position is -1, this was not a "all" call. So we have only one answer.
+                        // We can finish.
+                        if (result_position == -1) {
+                            if (!is_sid_t_broadcast(sid)) {
+                                memcpy(&rpc_result[0].content, &recv_payload[2], filesize - 2);
+                                memcpy(&rpc_result[0].server_sid, &server_sid, sizeof(sid_t));
+                                return_code = 2;
+                                received = 1;
+                                break;
+                            }
+                        } else {
+                            // Otherwise store the result at the result_position.
+                            memcpy(&rpc_result[result_position].content, &recv_payload[2], filesize - 2);
+                            // If the result array is full, we do not have to wait any longer and can finish execution.
+                            if (result_position == 4) {
+                                return_code = 2;
+                                received = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 	    sleep(1);
 	}
 
@@ -151,7 +243,8 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     // Construct the manifest and write it to the manifest file.
 	// We have to treat it differently if the call should be braodcasted. In this case no recipient is required.
 	char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
-	if (is_sid_t_broadcast(sid)) {
+
+    if (is_sid_t_broadcast(sid) || is_sid_t_any(sid)) {
 		int manifest_size = strlen("service=RPC\nname=\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
 		char manifest_str[manifest_size];
 		sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid));
@@ -162,7 +255,6 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 	    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
 	    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 	}
-
 
     // Init the cURL stuff.
 	curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -186,7 +278,6 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     _rpc_curl_set_basic_opt(url_insert, curl_handler, header);
     curl_easy_setopt(curl_handler, CURLOPT_WRITEFUNCTION, _rpc_curl_write_response);
     curl_easy_setopt(curl_handler, CURLOPT_WRITEDATA, (void *) &curl_result_memory);
-
 
     // Add the manifest and payload form and add the form to the cURL request.
     _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
