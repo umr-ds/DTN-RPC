@@ -51,6 +51,8 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	    cJSON *recent_file = cJSON_GetArrayItem(rows, 0);
 	    // ... get the 'service', ...
 	    char *service = cJSON_GetArrayItem(recent_file, 2)->valuestring;
+		// ... the sender from the recent file, ...
+		char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
 	    // ... the recipient from the recent file.
 	    char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
@@ -91,12 +93,22 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 	        } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
 	            // We got our result!
 	            pinfo("Received result.");
-	            memcpy(rpc_result, &recv_payload[2], filesize - 2);
-				if (_rpc_str_is_filehash((char *) rpc_result)) {
+
+
+
+				if (_rpc_str_is_filehash((char *) &recv_payload[2])) {
 					char fpath[128 + strlen(rpc_name) + 3];
 					while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(sid)) != 0) sleep(1);
-					memcpy(rpc_result, fpath, 128 + strlen(rpc_name) + 3);
+					memcpy(&rpc_result[0].content, fpath, 128 + strlen(rpc_name) + 3);
+				} else {
+					memcpy(&rpc_result[0].content, &recv_payload[2], filesize - 2);
 				}
+				sid_t server_sid;
+				str_to_sid_t(&server_sid, sender);
+				memcpy(&rpc_result[0].server_sid, &server_sid, sizeof(sid_t));
+
+
+
 	            return_code = 2;
 	            received = 1;
 	            break;

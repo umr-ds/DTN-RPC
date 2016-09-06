@@ -113,12 +113,15 @@ int main (int argc, char **argv) {
 		char *param1 = argv[offset + 2];
 
 		// Serval has a function, where the string "broadcast" gets parsed to SID_BROADCAST.
-		// If we get the string "any", we set it to "braodcast" and let Serval do the rest.
-		if (!strncmp(sidhex, "any", strlen("any"))) {
+		// If we get the string "all", we set it to "braodcast" and let Serval do the rest.
+		// If we get "any", we set the SID_ANY sid.
+		if (!strncmp(sidhex, "all", strlen("all"))) {
 			sidhex = "broadcast";
 		}
 		sid_t sid;
-		if (str_to_sid_t(&sid, sidhex) == -1) {
+		if (!strncmp(sidhex, "any", strlen("any"))) {
+			memcpy(&sid, &SID_ANY, sizeof(sid_t));
+		} else if (str_to_sid_t(&sid, sidhex) == -1) {
 			pfatal("Could not convert SID to sid_t. Aborting.");
 			return -1;
 		}
@@ -138,7 +141,7 @@ int main (int argc, char **argv) {
 
 		int ret_code = -1;
 		if (_rpc_check_cli(argv[2], "msp", "s")) {
-			if (is_sid_t_broadcast(sid)) {
+			if (is_sid_t_broadcast(sid) || is_sid_t_any(sid)) {
 				pfatal("Can not broadcast via MSP. Aborting.");
 				return -1;
 			}
@@ -148,7 +151,7 @@ int main (int argc, char **argv) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
 		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
-			pinfo("Client mode: MDP (broadcast)");
+			pinfo("Client mode: MDP");
 			ret_code = rpc_client_call_mdp(sid, name, nfields + 1, params);
 		}
 		// From here the RPC gets parsed.
@@ -161,7 +164,12 @@ int main (int argc, char **argv) {
 		}
 
 		if (ret_code == 2) {
-			pinfo("RPC result: %s", (char *) rpc_result);
+			// Iterate over all available results in the array.
+            int num_answers = _rpc_client_result_get_insert_index();
+            int i;
+            for (i = 0; i < num_answers; i++) {
+                pinfo("RPC result from %s: %s", alloca_tohex_sid_t(rpc_result[i].server_sid), (char *) rpc_result[i].content);
+            }
 			return 0;
 		}
 		pfatal("Something went wrong. No result.");

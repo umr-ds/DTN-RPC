@@ -16,6 +16,32 @@ uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *r
         return payload;
 }
 
+// Find the position where we can insert new results.
+int _rpc_client_result_get_insert_index () {
+	int i;
+	for (i = 0; i < 5; i++) {
+		// Per definition, if at this prosition is SID_ANY, we can write new content at this position.
+		if (is_sid_t_any(rpc_result[i].server_sid)) {
+			return i;
+		}
+	}
+    if (i == 5) {
+        return i;
+    }
+	return -1;
+}
+
+// Get the position of SID in result array
+int _rpc_client_result_get_sid_index (sid_t sid) {
+	int i;
+	for (i = 0; i < 5; i++) {
+		if (!cmp_sid_t(&sid, &rpc_result[i].server_sid)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 // Function to flatten the parameters and replace the first parameter if it is a local path.
 int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **params, int paramc) {
 	if (!access(params[0], F_OK)) {
@@ -150,6 +176,4 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
         }
         return call_return;
     }
-
-    return 1;
 }

@@ -45,7 +45,13 @@ int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int received;
-uint8_t *rpc_result[RPC_PKT_SIZE];
+// Result struct to store answers
+struct RPCResult {
+    sid_t server_sid;
+    uint8_t content[RPC_PKT_SIZE];
+};
+// Array for 5 result structs
+struct RPCResult rpc_result[5];
 
 // Transparent
 int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params);

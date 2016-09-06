@@ -5,8 +5,6 @@ char *current_sid = "";
 
 // The RPC client handler
 size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_t *payload, size_t len, void *UNUSED(context)) {
-    size_t ret = 0;
-
     // If there is an errer on the socket, stop it.
     if (state & (MSP_STATE_CLOSED | MSP_STATE_ERROR)) {
         pwarn("Socket closed.");
@@ -23,7 +21,6 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 
     // If we have payload handle it.
     if (payload && len) {
-        ret = len;
         // Get the packet type.
         uint16_t pkt_type = read_uint16(&payload[0]);
         // If we receive an ACK, just print.
@@ -32,16 +29,22 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
             received = 1;
         } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
             pinfo("Answer received.");
-            memcpy(rpc_result, &payload[2], len - 2);
-			if (_rpc_str_is_filehash((char *) rpc_result)) {
+            // We need the server SID which we have to get programmatically.
+            struct mdp_sockaddr addr;
+            bzero(&addr, sizeof addr);
+            msp_get_remote(sock, &addr);
+			if (_rpc_str_is_filehash((char *) &payload[2])) {
 				char fpath[128 + strlen(current_rpc) + 3];
 				while (_rpc_download_file(fpath, current_rpc, current_sid) != 0) sleep(1);
-				memcpy(rpc_result, fpath, 128 + strlen(current_rpc) + 3);
-			}
+				memcpy(rpc_result[0].content, fpath, 128 + strlen(current_rpc) + 3);
+			} else {
+                memcpy(&rpc_result[0].content, &payload[2], len - 2);
+            }
+            memcpy(&rpc_result[0].server_sid, &addr.sid, sizeof(sid_t));
             received = 2;
         }
     }
-    return ret;
+    return len;
 }
 
 // Direct call function.

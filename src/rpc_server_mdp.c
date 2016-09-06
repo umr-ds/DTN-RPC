@@ -33,7 +33,7 @@ int _rpc_server_mdp_setup () {
 static int _rpc_server_mdp_handle (int mdp_sockfd) {
 	// Setup MDP header where meta data from incoming packet gets stored.
 	struct mdp_header header;
-	uint8_t payload[1200];
+	uint8_t payload[RPC_PKT_SIZE];
 
 	// Receive payload.
 	ssize_t len = mdp_recv(mdp_sockfd, &header, payload, sizeof(payload));
