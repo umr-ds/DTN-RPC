@@ -25,7 +25,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
         //Wait for 20 seconds for answer (While develpment. Later maybe longer).
         if (time(NULL) - start_time > wait_time) {
             // If we hit the timeout, get the number of elements in the result array.
-            int num_answers = _rpc_client_result_get_insert_index();
+            int num_answers = rpc_client_result_get_insert_index();
             // If the SID is the broadcast id we check if we have at least one answer.
             if (is_sid_t_broadcast(sid) && num_answers > 0) {
                 return_code = 2;
@@ -137,7 +137,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                 if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
                     // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
                     if (is_sid_t_broadcast(sid) && _rpc_client_result_get_sid_index(sid) == -1) {
-                        int position = _rpc_client_result_get_insert_index();
+                        int position = rpc_client_result_get_insert_index();
                         memcpy(&rpc_result[position].server_sid, &server_sid, sizeof(sid_t));
                     }
                     pinfo("Server %s accepted call.", sender);

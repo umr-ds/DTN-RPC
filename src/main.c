@@ -165,7 +165,7 @@ int main (int argc, char **argv) {
 
 		if (ret_code == 2) {
 			// Iterate over all available results in the array.
-            int num_answers = _rpc_client_result_get_insert_index();
+            int num_answers = rpc_client_result_get_insert_index();
             int i;
             for (i = 0; i < num_answers; i++) {
                 pinfo("RPC result from %s: %s", alloca_tohex_sid_t(rpc_result[i].server_sid), (char *) rpc_result[i].content);

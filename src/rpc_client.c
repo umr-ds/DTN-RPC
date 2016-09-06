@@ -17,7 +17,7 @@ uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *r
 }
 
 // Find the position where we can insert new results.
-int _rpc_client_result_get_insert_index () {
+int rpc_client_result_get_insert_index () {
 	int i;
 	for (i = 0; i < 5; i++) {
 		// Per definition, if at this prosition is SID_ANY, we can write new content at this position.

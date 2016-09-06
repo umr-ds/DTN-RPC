@@ -58,7 +58,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
         // Wait for 10 seconds for answer (While develpment. Later maybe longer).
 		if (time(NULL) - start_time > wait_time) {
             // If we hit the timeout, get the number of elements in the result array.
-            int num_answers = _rpc_client_result_get_insert_index();
+            int num_answers = rpc_client_result_get_insert_index();
             // If the SID is the broadcast id we check if we have at least one answer.
             if (is_sid_t_broadcast(server_sid) && num_answers > 0) {
                 received = 2;
@@ -100,7 +100,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	        if (pkt_type == RPC_PKT_CALL_ACK) {
                 // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
                 if (is_sid_t_broadcast(server_sid) && _rpc_client_result_get_sid_index(server_sid) == -1) {
-                    int position = _rpc_client_result_get_insert_index();
+                    int position = rpc_client_result_get_insert_index();
                     memcpy(&rpc_result[position].server_sid, &mdp_recv_header.remote.sid, sizeof(sid_t));
                 }
 	            pinfo("Server %s accepted call.", alloca_tohex_sid_t(mdp_recv_header.remote.sid));

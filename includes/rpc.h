@@ -44,6 +44,7 @@ int rpc_server_listen_rhizome ();
 int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
+int rpc_client_result_get_insert_index ();
 int received;
 // Result struct to store answers
 struct RPCResult {
