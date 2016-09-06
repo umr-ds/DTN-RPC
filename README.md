@@ -88,28 +88,42 @@ If the server receives data for complex RPCs, the data is stored in `/tmp/rpc_tm
 If the result of an procedure is a file, the path to that file has to be returned to the RPC server. The server will send the file back via Rhizome.
 
 ### Client
-To call a RPC there are multiple ways. This could be either *directly*, if a RPC server is known or *any*. The third mode is *transparent*, where the best solution is chosen.
+To call a RPC there are multiple ways. This could be either *directly*, if a RPC server is known. Another option is *any*. Here the call gets broadcastet. The first answer will be the result of your RPC. The third option is *all*, where the call gets broadcastet, again. But now ServalRPC will wait for up to 5 results and store them in the result array. The last mode is *transparent*, where the best solution is chosen.
 
 #### Transparent
 The *transparent* mode is called via the function `int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params)`. The `server_sid` is the SID of the server. The `rpc_name` has to be the RPC name and the `paramc` is the number of parameters needed. Finally all needed parameters has to be provides as `char **` (array of strings).
 
-If the Server is not available via MSP the procedure will be send via Rhizome. If the `server_sid` is `any` or `broadcast` the call will be sent via MDP or Rhizome, depending on server availability.
+If the Server is not available via MSP the procedure will be send via Rhizome. If the `server_sid` is `any` or `broadcast` the call will be sent via MDP or Rhizome, depending on server availability in the corresponding mode.
 
 #### Direct
-The *direct* mode is triggert with `int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params)`. The parameters are the same as above. Note: if the server is not available, the RPC will be sent via Rhizome. If the connections gets lost while waiting for the result, the result will be delivered via Rhizome.
+The *direct* mode is triggert with `int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params)`. The parameters are the same as above. If the connection gets lost while waiting for the result, the result will be delivered via Rhizome. Note: In this mode the the SID can not be `SID_BROADCAST` or `SID_ANY`.
 
-#### Any
-With `int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params);` the call will be broadcasted via MDP. **Note:** The `server_sid` has to be `SID_BROADCAST`, otherwise the call will not be broadcasted but sent directly using MDP.
+`int rpc_client_call_mdp (sid_t sid, char *rpc_name, int paramc, char **params)` is also possible but more likely not successful since MDP is unreliable.
+
+#### Any/All
+With `int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params)` or `int rpc_client_call_rhizome (sid_t server_sid, char *rpc_name, int paramc, char **params)` the call will be broadcasted via MDP. The SID can be either `SID_ANY` or `SID_BROADCAST`. The corresponding mode will be chosen (see Client introduction).
 
 #### Delay-tolerant
-With `int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);` the call will be issued via Rhizome. If you want to broadcast the call via Rhizome, set the `sid` to `SID_BROADCAST`.
+With `int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params)` the call will be issued via Rhizome. Here all three modes are supported (*any*, *all* or *direct*)
 
 ---
+The result will be stored in a struct with the following outline:
 
-The result will be stored in `rpc_result`, which is an `\0` terminated array of type `uint8_t`.
+```
+struct RPCResult {
+    sid_t server_sid;
+    uint8_t content[RPC_PKT_SIZE];
+};
+```
+
+The `sid_t server_sid` is the SID of the server which executed the call. In `content` the answer is stored. `RPC_PKT_SIZE` is the MDP MTU size minus various header sizes, usually about 1024 bytes.
+
+All incoming answers are stored in a separate struct, which will be stored in an array of `RPCResult` structs with 5 elements.
+
+Even if you receive less than 5 results, the array will contain data, so a simple `NULL` check is not sufficient to check if a struct contains any useable data. Therefore the the function `int rpc_client_result_get_insert_index ()` was written, which returns the number of answers in the array.
 
 ###### Complex case
-If your RPC is more than a simple function call and you have to send files, it is only possible to send one file per call. If you need more, you have to pack them (e.g. `tar`). The path to the file which has to be sent must be the first parameter otherwise the path will be sent as a simple string. If the result is a file, too, the path to that file will be stored in `rpc_result`. It is also only possible to get one file back. The implementation of the RPC has to make sure that, in case, all files are packet.
+If your RPC is more than a simple function call and you have to send files, it is only possible to send one file per call. If you need more, you have to pack them (e.g. `tar`). The path to the file which has to be sent must be the first parameter otherwise the path will be sent as a simple string. If the result is a file, too, the path to that file will be stored in `RPCResult.content`. It is also only possible to get one file back. The implementation of the RPC has to make sure that, in case, all files are packet.
 
 ## Caveats
 At this point the Serval Keyring has to be unencrypted. Furthermore, the credentials for the RESTful API are __RPC__ (username) and __SRPC__ (password).
