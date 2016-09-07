@@ -56,6 +56,18 @@ int _rpc_check_cli (char *arg, char *option, char *abbrev) {
 	return option_res || abbrev_res;
 }
 
+// Function to parse comma separated values of requirements
+void _rpc_str_to_int_arr (int *values, char *input_string) {
+	char *val_str = strtok(input_string, ",");
+
+	int i = 0;
+	while (val_str && i < 8) {
+		values[i] = atoi(val_str);
+		i++;
+		val_str = strtok(NULL, ",");
+	}
+}
+
 int main (int argc, char **argv) {
 	// First, check if servald is running.
 	if (!server_pid()) {
@@ -133,11 +145,16 @@ int main (int argc, char **argv) {
 		params[0] = param1;
 		// Parse additional arguments:
 		unsigned int i;
-		for (i = 0; i < nfields; i++) {
+		for (i = 0; i < nfields - 1; i++) {
 			// Skip to next parameter and save it in params at position i.
 			unsigned int n = offset + 3 + i;
 			params[i + 1] = argv[n];
 		}
+
+		int values[8];
+		_rpc_str_to_int_arr(values, argv[argc - 1]);
+
+		uint32_t requirements = rpc_client_prepare_requirements(values);
 
 		int ret_code = -1;
 		if (_rpc_check_cli(argv[2], "msp", "s")) {
@@ -146,18 +163,18 @@ int main (int argc, char **argv) {
 				return -1;
 			}
 			pinfo("Client mode: MSP (direct)");
-			ret_code = rpc_client_call_msp(sid, name, nfields + 1, params);
+			ret_code = rpc_client_call_msp(sid, name, nfields, params, requirements);
 		}  else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
-			ret_code = rpc_client_call_rhizome(sid, name, nfields + 1, params);
+			ret_code = rpc_client_call_rhizome(sid, name, nfields, params, requirements);
 		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
 			pinfo("Client mode: MDP");
-			ret_code = rpc_client_call_mdp(sid, name, nfields + 1, params);
+			ret_code = rpc_client_call_mdp(sid, name, nfields, params, requirements);
 		}
 		// From here the RPC gets parsed.
 		else if (_rpc_check_cli(argv[2], "-", "-")) {
 			pinfo("Client mode: Transparent.");
-			ret_code = rpc_client_call(sid, name, nfields + 1, params);
+			ret_code = rpc_client_call(sid, name, nfields, params, requirements);
 		} else {
 			_rpc_print_usage(2, "Unrecognized option.");
 			return -1;

@@ -45,6 +45,7 @@ int rpc_server_listen_mdp_broadcast ();
 
 /**** Client part. ****/
 int rpc_client_result_get_insert_index ();
+uint32_t rpc_client_prepare_requirements (int *values);
 int received;
 // Result struct to store answers
 struct RPCResult {
@@ -55,10 +56,10 @@ struct RPCResult {
 struct RPCResult rpc_result[5];
 
 // Transparent
-int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params);
+int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params, uint32_t requirements);
 // Direct
-int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params);
+int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params, uint32_t requirements);
 // Delay-tolerant (any/direct)
-int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params);
+int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params, uint32_t requirements);
 // Any
-int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params);
+int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params, uint32_t requirements);

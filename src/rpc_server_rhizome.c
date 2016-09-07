@@ -166,7 +166,7 @@ int _rpc_server_rhizome_process () {
         		}
 
                 // Check, if we offer this procedure and we should accept the call.
-                if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
+                if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&recv_payload[1]))) {
                     pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                     // Compile and send ACK packet.

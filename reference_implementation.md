@@ -19,7 +19,7 @@ Make sure to offer a RPC the right way (see #Server).
 ## Client
 ### SYNOPSIS
 ```
-servalrpc -c [-s | -r | -d] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]
+servalrpc -c [-s | -r | -d] -- (<server_sid> | (broadcast|any) | all) <procedure> <arg_1> [<arg_2> ...] <requirements>
 ```
 ### DESCRIPTION
 `servalrpc -c` calls a remote procedure.
@@ -30,8 +30,10 @@ servalrpc -c [-s | -r | -d] -- (<server_sid> | broadcast | any) <procedure> <arg
 
 `-d, --mdp` Call via MDP
 
-`(<server_sid> | broadcast | any)` Either the RPC server SID or `broadcast` or `any`, if the call should be broadcasted
+`(<server_sid> | (broadcast|any) | all)` Either the RPC server SID or `broadcast` or `any` or `all`. See README for modes.
 
 `<procedure>` The name of the procedure which should be called
 
 `<arg_1> [<arg_2> ...]` The RPC arguments.
+
+`<requirements>` a comma-separated list of eight requirements. Example: `0,0,0,0,0,0,0,0`

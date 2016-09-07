@@ -32,7 +32,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 			}
 
 			// Check, if we offer this procedure and we should accept the call.
-			if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
+			if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&payload[1]))) {
 				pinfo("Offering desired RPC. Sending ACK.");
 				// Compile and send ACK packet.
 				uint8_t ack_payload[1];

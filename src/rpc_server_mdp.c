@@ -56,7 +56,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 		}
 
 		// Check, if we offer this procedure and we should accept the call.
-        if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
+        if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&payload[1]))) {
             pinfo("Offering desired RPC. Sending ACK.");
             // Compile and send ACK packet.
             uint8_t ack_payload[1];

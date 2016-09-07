@@ -1,7 +1,7 @@
 #include "rpc.h"
 
 // MDP call function.
-int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params) {
+int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params, uint32_t requirements) {
 	// If the server_sid is not broadcast or any, we have to check, if the server is available.
 	if (!is_sid_t_any(server_sid) && !is_sid_t_broadcast(server_sid) && !_rpc_sid_is_reachable(server_sid)) {
 		pfatal("Server %s not reachable. Aborting.", alloca_tohex_sid_t(server_sid));
@@ -43,8 +43,8 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	_rpc_client_replace_if_path(flat_params, rpc_name, params, paramc);
 
 	// Compile the call payload.
-	uint8_t payload[1 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
-    _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+	uint8_t payload[1 + 4 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
+    _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params, requirements);
 
 	// pollfd for listening for the result via MDP.
 	struct pollfd fds[2];

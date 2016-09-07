@@ -221,7 +221,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 }
 
 // Delay-tolerant call function.
-int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params) {
+int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **params, uint32_t requirements) {
     // Make sure the result array is empty.
     memset(rpc_result, 0, sizeof(rpc_result));
     int return_code = -1;
@@ -231,13 +231,9 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 	char flat_params[512];
 	_rpc_client_replace_if_path(flat_params, rpc_name, params, paramc);
 
-    // Construct the payload and write it to the payload file.
-    // |------------------------|-------------------|----------------------------|--------------------------|
-    // |-- 1 byte packet type --|-- 1 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
-    // |------------------------|-------------------|----------------------------|--------------------------|
-    // One extra byte for string termination.
-    uint8_t payload[1 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
-    _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
+    // Compile the call payload.
+    uint8_t payload[1 + 4 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
+    _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params, requirements);
     char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
 

@@ -20,7 +20,8 @@ int server_running;
 int server_mode;
 
 int _rpc_server_offering (struct RPCProcedure *rp);
-int _rpc_server_accepts (struct RPCProcedure *rp);
+int _rpc_server_accepts (struct RPCProcedure *rp, uint32_t requirements);
+void _rpc_server_parse_requirements (int *result, uint32_t raw);
 int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp);
 struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len);
 void _rpc_free_rp (struct RPCProcedure rp);

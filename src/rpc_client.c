@@ -1,17 +1,19 @@
 #include "rpc.h"
 
 // Prepare the payload whith the RPC information.
-uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *rpc_name, char *flat_params) {
+uint8_t *_rpc_client_prepare_call_payload (uint8_t *payload, int paramc, char *rpc_name, char *flat_params, uint32_t requirements) {
         // Write the packettype, ...
         write_uint8(&payload[0], RPC_PKT_CALL);
+		// ... requirements, ...
+		write_uint32(&payload[1], requirements);
         // ... number of parameters, ...
-        write_uint8(&payload[1], (uint16_t) paramc);
+        write_uint8(&payload[5], (uint16_t) paramc);
         // ... the RPC name ...
-        memcpy(&payload[2], rpc_name, strlen(rpc_name));
+        memcpy(&payload[6], rpc_name, strlen(rpc_name));
         // ... and the parameters.
-        memcpy(&payload[2 + strlen(rpc_name)], flat_params, strlen(flat_params));
+        memcpy(&payload[6 + strlen(rpc_name)], flat_params, strlen(flat_params));
         // Make sure there is a string terminater. Makes it easier to parse on server side.
-        memcpy(&payload[2 + strlen(rpc_name) + strlen(flat_params)], "\0", 1);
+        memcpy(&payload[6 + strlen(rpc_name) + strlen(flat_params)], "\0", 1);
 
         return payload;
 }
@@ -68,18 +70,46 @@ int _rpc_client_replace_if_path (char *flat_params, char *rpc_name, char **param
 	return 0;
 }
 
+// Compile requirements array out of integer array
+// Illustration with example
+// val[i]  : ...00000110
+// val[i+1]: ...00001011
+// req     : ...00000000
+// ==>
+// req     : ...00000110 << 4
+// req     : ...01100000 | val[i+1]
+// -------------------
+// res     : ...01101011
+// Shift away last 4 bits and keep going.
+uint32_t rpc_client_prepare_requirements (int *values) {
+	uint32_t requirements = 0;
+	int i;
+	for (i = 0; i < 7; i += 2){
+		if (values[i] < 0 || values[i] > 15 || values[i + 1] < 0 || values[i + 1] > 15) {
+			pfatal("All values has to be greater than 0 and less than or equal 15. Aborting.");
+			return 0;
+		}
+
+		requirements = requirements | values[i];
+		requirements = requirements << 4;
+		requirements = requirements | values[i+1];
+		requirements = i + 1 == 7 ? requirements : requirements << 4;
+	}
+	return requirements;
+}
+
 // General call function. For transparent usage.
-int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params) {
+int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params, uint32_t requirements) {
 	received = 0;
-    if (is_sid_t_broadcast(server_sid)) {
+    if (is_sid_t_broadcast(server_sid) || is_sid_t_any(server_sid)) {
 		// Broadcast the RPC.
-		int call_return = rpc_client_call_mdp(server_sid, rpc_name, paramc, params);
+		int call_return = rpc_client_call_mdp(server_sid, rpc_name, paramc, params, requirements);
 
 		if (call_return == -1) {
 			// If MDP ist not possible, try Rhizome.
 	        pwarn("No Server found via MDP. Trying Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
@@ -91,7 +121,7 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 			// Seems like the prior call was succesfull, but in the middle something went wrong. Trying again.
             pfatal("Seems like the server accepted the call via MDP, but the client could not receive ACK or result. Trying Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
@@ -106,7 +136,7 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 		if (call_return == 1) {
             pfatal("Received ACK but could not collect result. Last try via Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
@@ -126,13 +156,13 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 
 	else {
         // Call the rpc directly over msp.
-        int call_return = rpc_client_call_msp(server_sid, rpc_name, paramc, params);
+        int call_return = rpc_client_call_msp(server_sid, rpc_name, paramc, params, requirements);
 
 		if (call_return == -1) {
 			// If MSP ist not possible, try Rhizome.
 	        pwarn("No Server found via MSP. Trying Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
@@ -144,7 +174,7 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 			// Seems like the prior call was succesfull, but in the middle something went wrong. Trying again.
             pfatal("Seems like the server accepted the call via MSP, but the client could not receive ACK or result. Trying Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");
@@ -159,7 +189,7 @@ int rpc_client_call (sid_t server_sid, char *rpc_name, int paramc, char **params
 		if (call_return == 1) {
             pfatal("Received ACK but could not collect result. Last try via Rhizome.");
 
-			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params);
+			call_return = rpc_client_call_rhizome(server_sid, rpc_name, paramc, params, requirements);
 
 			if (call_return == -1) {
 				pfatal("Call via Rhizome was not successfull. RPC not available. Try later.");

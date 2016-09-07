@@ -3,9 +3,37 @@
 /******* Function where the server checks if the call should be accpected. ****/
 /******* Implement acceptance predicates here. ********************************/
 /******* Return 1 if should accpet, 0 otherwise. ******************************/
-int _rpc_server_accepts (struct RPCProcedure *UNUSED(rp)) {
-	pinfo("Checking, if should accept the call.");
+int _rpc_server_accepts (struct RPCProcedure *rp, uint32_t requirements_raw) {
+	pinfo("Checking, if should accept call \"%s\".", rp->name);
+    int requirements[8];
+    _rpc_server_parse_requirements(requirements, requirements_raw);
+
+    // Write your code here.
+
 	return 1;
+}
+
+// Function to parse 4 byte number to 4 bit numbers for requirements.
+// Illustration with example
+// raw: ...01100110 &
+//         00001111
+// ------------------
+// res: ...00000110
+// Shift away last 4 bits and keep going.
+void _rpc_server_parse_requirements (int *result, uint32_t raw) {
+    uint32_t raw_copy = raw;
+    int i;
+    for (i = 0; i < 8; i++) {
+        result[i] = raw_copy & 15;
+        raw_copy = raw_copy >> 4;
+    }
+
+    int j;
+    for (i = 0, j = 0; i < j; i++, j--) {
+        int tmp = result[i];
+        result[i] = result[j];
+        result[j] = tmp;
+    }
 }
 
 // Function to check, if a RPC is offered by this server.
@@ -58,15 +86,15 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     struct RPCProcedure rp;
 
     // Parse the parameter count.
-    rp.paramc.paramc_n = read_uint8(&payload[1]);
+    rp.paramc.paramc_n = read_uint8(&payload[5]);
     // uint8 -> 2⁸ = 256 = 3 chars = 4 chars with \0, so allocate 4 bytes.
 	rp.paramc.paramc_s = calloc(4, sizeof(char));
-	sprintf(rp.paramc.paramc_s, "%u", read_uint8(&payload[1]));
+	sprintf(rp.paramc.paramc_s, "%u", read_uint8(&payload[5]));
 
-    // Cast the payload starting at byte 3 to string.
-    // The first 2 bytes are for packet type and param count.
-    char ch_payload[len - 1];
-    memcpy(ch_payload, &payload[2], len - 1);
+    // Cast the payload starting at byte 7 to string.
+    // The first 6 bytes are for packet type, param count and requirement list.
+    char ch_payload[len - 6];
+    memcpy(ch_payload, &payload[6], len - 6);
 
     // Split the payload at the first '|'
     char *tok = strtok(ch_payload, "|");
