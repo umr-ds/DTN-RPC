@@ -140,6 +140,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                         int position = rpc_client_result_get_insert_index();
                         memcpy(&rpc_result[position].server_sid, &server_sid, sizeof(sid_t));
                     }
+                    wait_time = wait_time == 20 ? 120 : wait_time;
                     pinfo("Server %s accepted call.", sender);
                     return_code = 1;
                 } else if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {

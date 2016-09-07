@@ -103,6 +103,8 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
                     int position = rpc_client_result_get_insert_index();
                     memcpy(&rpc_result[position].server_sid, &mdp_recv_header.remote.sid, sizeof(sid_t));
                 }
+				// Wait 20 seconds more if we receive ACK.
+				wait_time += 20;
 	            pinfo("Server %s accepted call.", alloca_tohex_sid_t(mdp_recv_header.remote.sid));
 	            received = 1;
 	        } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
