@@ -107,12 +107,12 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 		// If the socket is closed, start the Rhizome listener, but only if this was a transparetn call. Otherwise we just return.
 		// No reachablility check required since the server was reachabel once. This check below is sufficient.
 		if (msp_socket_is_null(sock) && !msp_socket_is_data(sock)) {
-			pfatal("MSP socket closed. Aborting.");
+            pwarn("MSP socket closed. Starting Rhizome listener.");
             // Clean up.
             sock = MSP_SOCKET_NULL;
             msp_close_all(mdp_fd);
             mdp_close(mdp_fd);
-            return -1;
+            return _rpc_client_rhizome_listen();
 		}
 
         // Process MSP socket

@@ -72,7 +72,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 		if (received == 0) {
 			// Send the payload.
 			if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0) {
-				pfatal("Could not discover packet. Aborting.");
+				pfatal("Could not send packet. Aborting.");
 				return -1;
 			}
 		}
