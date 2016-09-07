@@ -19,7 +19,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 	// If we receive something, handle it.
 	if (payload && len) {
 		// First make sure, we received a RPC call packet.
-		if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
+		if (read_uint8(&payload[0]) == RPC_PKT_CALL) {
 			pinfo("Received RPC via MSP.");
 			// Parse the payload to the RPCProcedure struct
 			struct mdp_sockaddr addr;
@@ -35,8 +35,8 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 			if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
 				pinfo("Offering desired RPC. Sending ACK.");
 				// Compile and send ACK packet.
-				uint8_t ack_payload[2];
-				write_uint16(&ack_payload[0], RPC_PKT_CALL_ACK);
+				uint8_t ack_payload[1];
+				write_uint8(&ack_payload[0], RPC_PKT_CALL_ACK);
 				ret = msp_send(sock, ack_payload, sizeof(ack_payload));
 
 				// Try to execute the procedure.

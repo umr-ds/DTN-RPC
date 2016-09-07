@@ -17,10 +17,10 @@ char* _rpc_flatten_params (int paramc, char **params, char *delim);
 size_t _rpc_write_tmp_file (char *file_name, void *content, size_t len);
 int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *filepath);
 int _rpc_download_file (char *fpath, char *rpc_name, char *client_sid);
-
 int _rpc_sid_is_reachable (sid_t sid);
-
 int _rpc_str_is_filehash (char *hash);
+void write_uint8 (uint8_t *payload, uint8_t value);
+uint8_t read_uint8 (const uint8_t *payload);
 
 /**** cURL helpers. ****/
 struct CurlResultMemory {

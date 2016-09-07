@@ -58,15 +58,15 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
     struct RPCProcedure rp;
 
     // Parse the parameter count.
-    rp.paramc.paramc_n = read_uint16(&payload[2]);
-    // uint16 -> 2¹⁶ = 65k = 5 chars = 6 chars with \0, so allocate 6 bytes.
-	rp.paramc.paramc_s = calloc(6, sizeof(char));
-	sprintf(rp.paramc.paramc_s, "%u", read_uint16(&payload[2]));
+    rp.paramc.paramc_n = read_uint8(&payload[1]);
+    // uint8 -> 2⁸ = 256 = 3 chars = 4 chars with \0, so allocate 4 bytes.
+	rp.paramc.paramc_s = calloc(4, sizeof(char));
+	sprintf(rp.paramc.paramc_s, "%u", read_uint8(&payload[1]));
 
-    // Cast the payload starting at byte 5 to string.
-    // The first 4 bytes are for packet type and param count.
-    char ch_payload[len - 4];
-    memcpy(ch_payload, &payload[4], len - 4);
+    // Cast the payload starting at byte 3 to string.
+    // The first 2 bytes are for packet type and param count.
+    char ch_payload[len - 1];
+    memcpy(ch_payload, &payload[2], len - 1);
 
     // Split the payload at the first '|'
     char *tok = strtok(ch_payload, "|");
@@ -87,6 +87,7 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
         strcpy(rp.params[i++], tok);
         tok = strtok(NULL, "|");
     }
+
     return rp;
 }
 
@@ -122,20 +123,20 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     }
 
     // Payload. Two bytes for packet type, 126 bytes for the result and 1 byte for '\0' to make sure the result will be a zero terminated string.
-    write_uint16(&result_payload[0], RPC_PKT_CALL_RESPONSE);
+    write_uint8(&result_payload[0], RPC_PKT_CALL_RESPONSE);
 
     // If the pipe is open ...
     if (pipe_fp) {
         // ... read the result, store it in the payload ...
-        char *UNUSED(tmp_fgets_res) = fgets((char *)&result_payload[2], RPC_PKT_SIZE-1, pipe_fp);
+        char *UNUSED(tmp_fgets_res) = fgets((char *)&result_payload[1], RPC_PKT_SIZE-1, pipe_fp);
 		memcpy(&result_payload[RPC_PKT_SIZE], "\0", 1);
 
-		if (!access((char *) &result_payload[2], F_OK)) {
+		if (!access((char *) &result_payload[1], F_OK)) {
 			// Add the file to the Rhizome store given as the second parameter and replace the local path with the filehash.
 			char filehash[RPC_PKT_SIZE];
-			_rpc_add_file_to_store(filehash, rp.caller_sid, rp.name, (char*) &result_payload[2]);
+			_rpc_add_file_to_store(filehash, rp.caller_sid, rp.name, (char*) &result_payload[1]);
 
-			memcpy(&result_payload[2], filehash, RPC_PKT_SIZE-1);
+			memcpy(&result_payload[1], filehash, RPC_PKT_SIZE-1);
 			memcpy(&result_payload[RPC_PKT_SIZE], "\0", 1);
 		}
 

@@ -22,7 +22,7 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
     // If we have payload handle it.
     if (payload && len) {
         // Get the packet type.
-        uint16_t pkt_type = read_uint16(&payload[0]);
+        uint8_t pkt_type = read_uint8(&payload[0]);
         // If we receive an ACK, just print.
         if (pkt_type == RPC_PKT_CALL_ACK) {
             pinfo("Server accepted call.");
@@ -33,12 +33,12 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
             struct mdp_sockaddr addr;
             bzero(&addr, sizeof addr);
             msp_get_remote(sock, &addr);
-			if (_rpc_str_is_filehash((char *) &payload[2])) {
+			if (_rpc_str_is_filehash((char *) &payload[1])) {
 				char fpath[128 + strlen(current_rpc) + 3];
 				while (_rpc_download_file(fpath, current_rpc, current_sid) != 0) sleep(1);
 				memcpy(rpc_result[0].content, fpath, 128 + strlen(current_rpc) + 3);
 			} else {
-                memcpy(&rpc_result[0].content, &payload[2], len - 2);
+                memcpy(&rpc_result[0].content, &payload[1], len - 1);
             }
             memcpy(&rpc_result[0].server_sid, &addr.sid, sizeof(sid_t));
             received = 2;
@@ -92,10 +92,10 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params) {
 
 	// Construct the payload and write it to the payload file.
 	// |------------------------|-------------------|----------------------------|--------------------------|
-	// |-- 2 byte packet type --|-- 2 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
+	// |-- 1 byte packet type --|-- 1 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
 	// |------------------------|-------------------|----------------------------|--------------------------|
 	// 1 extra byte for string termination.
-	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+	uint8_t payload[1 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
 	_rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
 	// Send the payload.

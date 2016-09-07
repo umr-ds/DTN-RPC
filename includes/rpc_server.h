@@ -5,7 +5,7 @@
 #define RPC_SERVER_MODE_ALL		3
 
 struct ParamRepr {
-	uint16_t paramc_n;
+	uint8_t paramc_n;
 	char *paramc_s;
 };
 

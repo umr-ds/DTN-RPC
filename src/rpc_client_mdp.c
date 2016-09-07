@@ -43,7 +43,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	_rpc_client_replace_if_path(flat_params, rpc_name, params, paramc);
 
 	// Compile the call payload.
-	uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+	uint8_t payload[1 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
     _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
 
 	// pollfd for listening for the result via MDP.
@@ -95,7 +95,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 			}
 
 			// Get the packet type.
-	        uint16_t pkt_type = read_uint16(&recv_payload[0]);
+	        uint8_t pkt_type = read_uint8(&recv_payload[0]);
 	        // If we receive an ACK, just print.
 	        if (pkt_type == RPC_PKT_CALL_ACK) {
                 // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
@@ -118,7 +118,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
                 }
 
                 // If we get an filehash, we have to doneload the file.
-                if (_rpc_str_is_filehash((char *) &recv_payload[2])) {
+                if (_rpc_str_is_filehash((char *) &recv_payload[1])) {
                     // Download the file and get the path.
                     char fpath[128 + strlen(rpc_name) + 3];
                     while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 0) sleep(1);
@@ -144,13 +144,13 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
                     // We can finish.
                     if (result_position == -1) {
                         if (!is_sid_t_broadcast(server_sid)) {
-                            memcpy(&rpc_result[0].content, &recv_payload[2], incoming_len - 2);
+                            memcpy(&rpc_result[0].content, &recv_payload[1], incoming_len - 1);
                             memcpy(&rpc_result[0].server_sid, &mdp_recv_header.remote.sid, sizeof(sid_t));
                             received = 2;
                         }
                     } else {
                         // Otherwise store the result at the result_position.
-                        memcpy(&rpc_result[result_position].content, &recv_payload[2], incoming_len - 2);
+                        memcpy(&rpc_result[result_position].content, &recv_payload[1], incoming_len - 1);
                         // If the result array is full, we do not have to wait any longer and can finish execution.
                         if (result_position == 4) {
                             received = 2;

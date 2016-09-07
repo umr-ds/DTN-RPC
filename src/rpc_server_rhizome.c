@@ -155,7 +155,7 @@ int _rpc_server_rhizome_process () {
             uint8_t recv_payload[filesize];
             memcpy(recv_payload, curl_result_memory.memory, filesize);
 
-            if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL) {
+            if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL) {
                 pinfo("Received RPC via Rhizome.");
                 // Parse the payload to the RPCProcedure struct
                 struct RPCProcedure rp = _rpc_server_parse_call(recv_payload, filesize);
@@ -170,8 +170,8 @@ int _rpc_server_rhizome_process () {
                     pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                     // Compile and send ACK packet.
-                    uint8_t payload[2];
-                    write_uint16(&payload[0], RPC_PKT_CALL_ACK);
+                    uint8_t payload[1];
+                    write_uint8(&payload[0], RPC_PKT_CALL_ACK);
                     _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, payload);
 
                     // Try to execute the procedure.

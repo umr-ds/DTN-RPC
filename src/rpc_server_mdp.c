@@ -46,7 +46,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 	header.local.sid = my_subscriber->sid;
 
 	// If the packet is a RPC call, handle it.
-	if (read_uint16(&payload[0]) == RPC_PKT_CALL) {
+	if (read_uint8(&payload[0]) == RPC_PKT_CALL) {
 		pinfo("Received RPC call via MDP broadcast.");
 		// Parse the payload to the RPCProcedure struct
 		struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
@@ -59,8 +59,8 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
         if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp)) {
             pinfo("Offering desired RPC. Sending ACK.");
             // Compile and send ACK packet.
-            uint8_t ack_payload[2];
-            write_uint16(&ack_payload[0], RPC_PKT_CALL_ACK);
+            uint8_t ack_payload[1];
+            write_uint8(&ack_payload[0], RPC_PKT_CALL_ACK);
             mdp_send(mdp_sockfd, &header, ack_payload, sizeof(ack_payload));
 
             // Try to execute the procedure.

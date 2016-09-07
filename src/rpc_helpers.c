@@ -1,5 +1,19 @@
 #include "rpc.h"
 
+// Write 1 byte number to payload array.
+// Does not meet _rpc_.* naming convetion to keep naming similiar to other write_uint.* function from Serval.
+void write_uint8 (uint8_t *payload, uint8_t value) {
+	*payload = value & 0xff;
+	value = value >> 8;
+}
+
+// Read 1 byte number from payload array.
+// Does not meet _rpc_.* naming convetion to keep naming similiar to other write_uint.* function from Serval.
+uint8_t read_uint8 (const uint8_t *payload) {
+	uint8_t value = (0 << 8) | payload[0];
+	return value;
+}
+
 // Prepare 2D array of params to 1D array.
 char* _rpc_flatten_params (int paramc, char **params, char *delim) {
     // Determine how many chars are there.

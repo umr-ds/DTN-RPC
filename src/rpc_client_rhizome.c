@@ -134,7 +134,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                 uint8_t recv_payload[filesize];
                 memcpy(recv_payload, curl_result_memory.memory, filesize);
 
-                if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
+                if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
                     // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
                     if (is_sid_t_broadcast(sid) && _rpc_client_result_get_sid_index(sid) == -1) {
                         int position = rpc_client_result_get_insert_index();
@@ -142,7 +142,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                     }
                     pinfo("Server %s accepted call.", sender);
                     return_code = 1;
-                } else if (read_uint16(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
+                } else if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
                     // If we received the result, copy it to the result array:
                     pinfo("Answer received from %s.", sender);
                     // First, see if this SID has already an entry in the result array. If not, skip.
@@ -155,7 +155,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                     }
 
                     // If we get an filehash, we have to doneload the file.
-                    if (_rpc_str_is_filehash((char *) &recv_payload[2])) {
+                    if (_rpc_str_is_filehash((char *) &recv_payload[1])) {
                         // Download the file and get the path.
                         char fpath[128 + strlen(rpc_name) + 3];
                         while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 0) sleep(1);
@@ -186,7 +186,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                         // We can finish.
                         if (result_position == -1) {
                             if (!is_sid_t_broadcast(sid)) {
-                                memcpy(&rpc_result[0].content, &recv_payload[2], filesize - 2);
+                                memcpy(&rpc_result[0].content, &recv_payload[1], filesize - 1);
                                 memcpy(&rpc_result[0].server_sid, &server_sid, sizeof(sid_t));
                                 return_code = 2;
                                 received = 1;
@@ -194,7 +194,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                             }
                         } else {
                             // Otherwise store the result at the result_position.
-                            memcpy(&rpc_result[result_position].content, &recv_payload[2], filesize - 2);
+                            memcpy(&rpc_result[result_position].content, &recv_payload[1], filesize - 1);
                             // If the result array is full, we do not have to wait any longer and can finish execution.
                             if (result_position == 4) {
                                 return_code = 2;
@@ -232,10 +232,10 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 
     // Construct the payload and write it to the payload file.
     // |------------------------|-------------------|----------------------------|--------------------------|
-    // |-- 2 byte packet type --|-- 2 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
+    // |-- 1 byte packet type --|-- 1 byte paramc --|-- strlen(rpc_name) bytes --|-- strlen(params) bytes --|
     // |------------------------|-------------------|----------------------------|--------------------------|
     // One extra byte for string termination.
-    uint8_t payload[2 + 2 + strlen(rpc_name) + strlen(flat_params) + 1];
+    uint8_t payload[1 + 1 + strlen(rpc_name) + strlen(flat_params) + 1];
     _rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params);
     char tmp_payload_file_name[] = "/tmp/pf_XXXXXX";
     _rpc_write_tmp_file(tmp_payload_file_name, payload, sizeof(payload));
