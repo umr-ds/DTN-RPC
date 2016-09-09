@@ -1,4 +1,4 @@
-# ServalRPC API documentation
+# ServalRPC
 This documentation provides all needed information to use RPCs via Serval.
 
 ## Building
