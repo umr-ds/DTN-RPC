@@ -29,15 +29,15 @@ void _rpc_server_sig_handler (int signum) {
 void _rpc_print_usage (int mode, char *reason) {
 	switch (mode) {
 		case 1:
-			pfatal("%s\nUsage (server): ./servalrpc -l [-s | -d | -r]\nSee reference_implementation.md for more information.", reason);
+			pfatal("%s\nUsage (server): ./servalrpc -l [-s | -d | -r]\nSee servalrpc.md for more information.", reason);
 			break;
 		case 2:
-			pfatal("%s\nUsage (client): ./servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]\nSee reference_implementation.md for more information.", reason);
+			pfatal("%s\nUsage (client): ./servalrpc -c [-s | -d | -r] -- (<server_sid> | (broadcast|any) | all)  <procedure> <arg_1> [<arg_2> ...]\nSee servalrpc.md for more information.", reason);
 			break;
 		default:
 			pfatal( "%s\n"
 					"Usage (server): ./servalrpc -l [-s | -d | -r]\n"
-					"Usage (client): ./servalrpc -c [-s | -r] -- (<server_sid> | broadcast | any) <procedure> <arg_1> [<arg_2> ...]\nSee reference_implementation.md for more information.",
+					"Usage (client): ./servalrpc -c [-s | -d | -r] -- (<server_sid> | (broadcast|any) | all)  <procedure> <arg_1> [<arg_2> ...]\nSee servalrpc.md for more information.",
 					reason
 			);
 	}

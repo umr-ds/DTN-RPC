@@ -19,7 +19,7 @@ Make sure to offer a RPC the right way (see #Server).
 ## Client
 ### SYNOPSIS
 ```
-servalrpc -c [-s | -r | -d] -- (<server_sid> | (broadcast|any) | all) <procedure> <arg_1> [<arg_2> ...] <requirements>
+servalrpc -c [-s | -d | -r] -- (<server_sid> | (broadcast|any) | all) <procedure> <arg_1> [<arg_2> ...] <requirements>
 ```
 ### DESCRIPTION
 `servalrpc -c` calls a remote procedure.
