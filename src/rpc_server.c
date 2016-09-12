@@ -133,7 +133,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 	// If this is an complex call, we have to donwload the file form the store and replace the hash with the path to the file.
 	if (_rpc_str_is_filehash(rp.params[0])) {
 		char fpath[128 + strlen(rp.name) + 3];
-		while (_rpc_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 0) sleep(1);
+		while (_rpc_download_file(fpath, rp.name, alloca_tohex_sid_t(rp.caller_sid)) != 1) sleep(1);
 
 		free(rp.params[0]);
 		rp.params[0] = calloc(strlen(fpath) + 1, sizeof(char));

@@ -161,7 +161,7 @@ int _rpc_sid_is_reachable (sid_t sid) {
 
 // Download file if it is an complex RPC.
 int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
-    int return_code = 0;
+    int return_code = -1;
 
 	// Init the cURL stuff.
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -205,7 +205,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
         // (if there are no files in the store, abort)
 		int num_rows = cJSON_GetArraySize(rows);
         if (num_rows <= 0) {
-            return_code = 1;
+            return_code = 0;
             goto clean_rhizome_server_listener_all;
         }
 
@@ -278,7 +278,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
 	            }
 				fclose(rpc_file);
 				strcpy(fpath, filepath);
-				return_code = 0;
+				return_code = 1;
 				break;
 	        }
 	    }

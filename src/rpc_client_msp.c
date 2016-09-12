@@ -35,7 +35,7 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
             msp_get_remote(sock, &addr);
 			if (_rpc_str_is_filehash((char *) &payload[1])) {
 				char fpath[128 + strlen(current_rpc) + 3];
-				while (_rpc_download_file(fpath, current_rpc, current_sid) != 0) sleep(1);
+				while (_rpc_download_file(fpath, current_rpc, current_sid) != 1) sleep(1);
 				memcpy(rpc_result[0].content, fpath, 128 + strlen(current_rpc) + 3);
 			} else {
                 memcpy(&rpc_result[0].content, &payload[1], len - 1);

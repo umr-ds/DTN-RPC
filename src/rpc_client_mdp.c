@@ -123,7 +123,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
                 if (_rpc_str_is_filehash((char *) &recv_payload[1])) {
                     // Download the file and get the path.
                     char fpath[128 + strlen(rpc_name) + 3];
-                    while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 0) sleep(1);
+                    while (_rpc_download_file(fpath, rpc_name, alloca_tohex_sid_t(SID_BROADCAST)) != 1) sleep(1);
                     // If the result_position is -1, this was not a "all" call. So we have only one answer.
                     // We can finish.
                     if (result_position == -1) {
