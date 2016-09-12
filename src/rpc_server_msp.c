@@ -47,7 +47,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {
 						pinfo("Sending result via MSP.");
 						if (msp_send(sock, result_payload, sizeof(result_payload)) == sizeof(result_payload)) {
-							pinfo("RPC execution was successful.");
+							pinfo("RPC execution was successful.\n");
 						}
 					} else if (server_mode == RPC_SERVER_MODE_ALL) {
 						// Use Rhizome if MSP is not available and server_mode is ALL.

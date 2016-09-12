@@ -180,7 +180,7 @@ int _rpc_server_rhizome_process () {
 	                if (_rpc_server_excecute(result_payload, rp)) {
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
-                        pinfo("RPC execution was successful.");
+                        pinfo("RPC execution was successful.\n");
                     }
                 } else {
                     pwarn("Not offering desired RPC. Ignoring.");

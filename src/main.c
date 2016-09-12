@@ -20,13 +20,13 @@ void _close_keyring () {
 }
 
 // Signalhandler for stopping the server on ctrl-c
-void _rpc_server_sig_handler (int signum) {
+void _sig_handler (int signum) {
     pwarn("Caught signal with signum %i. Stopping RPC server.", signum);
     server_running = 1;
 }
 
 // Simple usage method
-void _rpc_print_usage (int mode, char *reason) {
+void _print_usage (int mode, char *reason) {
 	switch (mode) {
 		case 1:
 			pfatal("%s\nUsage (server): ./servalrpc -l [-s | -d | -r]\nSee servalrpc.md for more information.", reason);
@@ -44,7 +44,7 @@ void _rpc_print_usage (int mode, char *reason) {
 }
 
 // Very basic commandline parser
-int _rpc_check_cli (char *arg, char *option, char *abbrev) {
+int _check_cli (char *arg, char *option, char *abbrev) {
 	char lng_option[2 + strlen(option)];
 	sprintf(lng_option, "--%s", option);
 	char lng_abbrev[1 + strlen(abbrev)];
@@ -57,7 +57,7 @@ int _rpc_check_cli (char *arg, char *option, char *abbrev) {
 }
 
 // Function to parse comma separated values of requirements
-void _rpc_str_to_int_arr (int *values, char *input_string) {
+void _str_to_int_arr (int *values, char *input_string) {
 	char *val_str = strtok(input_string, ",");
 
 	int i = 0;
@@ -77,40 +77,40 @@ int main (int argc, char **argv) {
 
 	// Make sure that at least one param is set.
 	if (argc < 2) {
-		_rpc_print_usage(0, "Not enough arguments!");
+		_print_usage(0, "Not enough arguments!");
 		return -1;
 	}
 
     _open_keyring();
 
 	// This is the server part.
-	if (_rpc_check_cli(argv[1], "listen", "l")) {
-    	signal(SIGINT, _rpc_server_sig_handler);
-    	signal(SIGTERM, _rpc_server_sig_handler);
+	if (_check_cli(argv[1], "listen", "l")) {
+    	signal(SIGINT, _sig_handler);
+    	signal(SIGTERM, _sig_handler);
 		// If there are more params than just listen.
 		if (argc == 3) {
-			if (_rpc_check_cli(argv[2], "msp", "s")) {
+			if (_check_cli(argv[2], "msp", "s")) {
 				pinfo("Server mode: MSP");
 				return rpc_server_listen_msp();
-			} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
+			} else if (_check_cli(argv[2], "mdp", "d")) {
 				pinfo("Server mode: MDP");
 				return rpc_server_listen_mdp_broadcast();
-			} else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
+			} else if (_check_cli(argv[2], "rhizome", "r")) {
 				pinfo("Server mode: Rhizome");
 				return rpc_server_listen_rhizome();
 			} else {
-				_rpc_print_usage(1, "Unrecognized option.");
+				_print_usage(1, "Unrecognized option.");
 				return -1;
 			}
 		} else if (argc == 2) {
 			pinfo("Server mode: All");
 			return rpc_server_listen();
 		} else {
-			_rpc_print_usage(1, "Too many options.");
+			_print_usage(1, "Too many options.");
 		}
 	}
 	// Client part.
-	else if (_rpc_check_cli(argv[1], "call", "c")) {
+	else if (_check_cli(argv[1], "call", "c")) {
 		// Get the index of the '--' seperator
 		int offset = 0;
 		if (strcmp(argv[2], "--")) {
@@ -152,31 +152,31 @@ int main (int argc, char **argv) {
 		}
 
 		int values[8];
-		_rpc_str_to_int_arr(values, argv[argc - 1]);
+		_str_to_int_arr(values, argv[argc - 1]);
 
 		uint32_t requirements = rpc_client_prepare_requirements(values);
 
 		int ret_code = -1;
-		if (_rpc_check_cli(argv[2], "msp", "s")) {
+		if (_check_cli(argv[2], "msp", "s")) {
 			if (is_sid_t_broadcast(sid) || is_sid_t_any(sid)) {
 				pfatal("Can not broadcast via MSP. Aborting.");
 				return -1;
 			}
 			pinfo("Client mode: MSP (direct)");
 			ret_code = rpc_client_call_msp(sid, name, nfields, params, requirements);
-		}  else if (_rpc_check_cli(argv[2], "rhizome", "r")) {
+		}  else if (_check_cli(argv[2], "rhizome", "r")) {
 			pinfo("Client mode: Rhizome (delay-tolerant)");
 			ret_code = rpc_client_call_rhizome(sid, name, nfields, params, requirements);
-		} else if (_rpc_check_cli(argv[2], "mdp", "d")) {
+		} else if (_check_cli(argv[2], "mdp", "d")) {
 			pinfo("Client mode: MDP");
 			ret_code = rpc_client_call_mdp(sid, name, nfields, params, requirements);
 		}
 		// From here the RPC gets parsed.
-		else if (_rpc_check_cli(argv[2], "-", "-")) {
+		else if (_check_cli(argv[2], "-", "-")) {
 			pinfo("Client mode: Transparent.");
 			ret_code = rpc_client_call(sid, name, nfields, params, requirements);
 		} else {
-			_rpc_print_usage(2, "Unrecognized option.");
+			_print_usage(2, "Unrecognized option.");
 			return -1;
 		}
 
@@ -192,7 +192,7 @@ int main (int argc, char **argv) {
 		pfatal("Something went wrong. No result.");
 		return -1;
 	} else {
-		_rpc_print_usage(0, "Unrecognized option.");
+		_print_usage(0, "Unrecognized option.");
 	}
     _close_keyring();
     return 0;

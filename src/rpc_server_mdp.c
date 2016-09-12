@@ -79,7 +79,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 				} else {
 					pfatal("MDP not available for result. Aborting.");
 				}
-                pinfo("RPC execution was successful.");
+                pinfo("RPC execution was successful.\n");
             }
         } else {
             pwarn("Not offering desired RPC. Ignoring.");
