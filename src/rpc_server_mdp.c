@@ -47,7 +47,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 
 	// If the packet is a RPC call, handle it.
 	if (read_uint8(&payload[0]) == RPC_PKT_CALL) {
-		_rpc_eval_event(0, "call received MDP", header.remote.sid);
+		_rpc_eval_event(0, 2, "call received MDP", alloca_tohex_sid_t(header.remote.sid));
 		pinfo("Received RPC call via MDP broadcast.");
 		// Parse the payload to the RPCProcedure struct
 		struct RPCProcedure rp = _rpc_server_parse_call(payload, len);
@@ -58,7 +58,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 
 		// Check, if we offer this procedure and we should accept the call.
         if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&payload[1]))) {
-			_rpc_eval_event(0, "sending ACK MDP", header.remote.sid);
+			_rpc_eval_event(0, 2, "sending ACK MDP", alloca_tohex_sid_t(header.remote.sid));
             pinfo("Offering desired RPC. Sending ACK.");
             // Compile and send ACK packet.
             uint8_t ack_payload[1];
@@ -72,7 +72,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 				// Send result back after successful execution.
 				if (_rpc_sid_is_reachable(header.remote.sid)) {
 					// Try MDP
-					_rpc_eval_event(0, "sending result MDP", header.remote.sid);
+					_rpc_eval_event(0, 2, "sending result MDP", alloca_tohex_sid_t(header.remote.sid));
 					pinfo("Sending result via MDP.");
 					mdp_send(mdp_sockfd, &header, result_payload, sizeof(result_payload));
 				} else if (server_mode == RPC_SERVER_MODE_ALL) {
@@ -82,7 +82,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 				} else {
 					pfatal("MDP not available for result. Aborting.");
 				}
-				_rpc_eval_event(0, "RPC success MDP", header.remote.sid);
+				_rpc_eval_event(0, 2, "RPC success MDP", alloca_tohex_sid_t(header.remote.sid));
                 pinfo("RPC execution was successful.\n");
             }
         } else {
@@ -90,8 +90,6 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
         }
 		_rpc_free_rp(rp);
     }
-
-	_rpc_eval_event(0, "returning process MDP", header.remote.sid);
 	return 0;
 }
 

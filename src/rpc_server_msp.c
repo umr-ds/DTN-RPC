@@ -24,7 +24,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 			struct mdp_sockaddr addr;
 			bzero(&addr, sizeof addr);
 			msp_get_remote(sock, &addr);
-            _rpc_eval_event(0, "call received MSP", addr.sid);
+			_rpc_eval_event(0, 2, "call received MSP", alloca_tohex_sid_t(addr.sid));
 			pinfo("Received RPC via MSP.");
 			struct RPCProcedure rp = _rpc_server_parse_call((uint8_t *) payload, len);
 			if (str_to_sid_t(&rp.caller_sid, alloca_tohex_sid_t(addr.sid)) == -1) {
@@ -34,7 +34,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 
 			// Check, if we offer this procedure and we should accept the call.
 			if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&payload[1]))) {
-                _rpc_eval_event(0, "sending ACK MSP", addr.sid);
+				_rpc_eval_event(0, 2, "sending ACK MSP", alloca_tohex_sid_t(addr.sid));
 				pinfo("Offering desired RPC. Sending ACK.");
 				// Compile and send ACK packet.
 				uint8_t ack_payload[1];
@@ -47,7 +47,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 				if (_rpc_server_excecute(result_payload, rp)) {
 					// Try MSP
 					if (!msp_socket_is_null(sock) && msp_socket_is_data(sock)) {
-                        _rpc_eval_event(0, "sending result MSP", addr.sid);
+						_rpc_eval_event(0, 2, "sending result MSP", alloca_tohex_sid_t(addr.sid));
 						pinfo("Sending result via MSP.");
 						if (msp_send(sock, result_payload, sizeof(result_payload)) == sizeof(result_payload)) {
 							pinfo("RPC execution was successful.\n");
@@ -61,7 +61,7 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 					}
 					ret = len;
 				} else {
-                    _rpc_eval_event(0, "RPC success MSP", addr.sid);
+					_rpc_eval_event(0, 2, "RPC success MSP", alloca_tohex_sid_t(addr.sid));
 					pfatal("RPC execution was not successful. Aborting.");
 					ret = len;
 				}
@@ -72,8 +72,6 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 			_rpc_free_rp(rp);
 		}
 	}
-
-    _rpc_eval_event(0, "returning process MSP", SID_ANY);
 	return ret;
 }
 

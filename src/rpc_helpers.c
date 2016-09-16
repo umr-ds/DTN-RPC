@@ -1,42 +1,67 @@
 #include "rpc.h"
 
-// Write event to file.
-void _rpc_eval_write_log (int mode, char *own_sid, char *event) {
-	char eval_path[81];
+// Function to write stuff into the corresponding log
+void _rpc_eval_event (int mode, int n_args, ...) {
+    // Init variadic arguments.
+    va_list args;
+    va_start(args, n_args);
 
-	if (mode == 0) {
-		sprintf(eval_path, "/tmp/%s_server.csv", own_sid);
-	} else if (mode == 1) {
-		sprintf(eval_path, "/tmp/%s_client.csv", own_sid);
-	}
+    // Write timestamp to string
+    size_t size = 13 + 1;
+    char *write_buffer = calloc(size, sizeof(char));
+    time_t event_time = time(NULL);
+    sprintf(write_buffer, "%ld,", event_time);
 
-	FILE *fp = fopen(eval_path, "a+");
+    int i;
+    // For every vararg: ...
+    for (i = 0; i < n_args; i++) {
+        // ... get the current argument, ...
+        char *arg = va_arg(args, char *);
+        // ... determine the new size (add 1 for ';'), ...
+        size = size + strlen(arg) + 1;
+        // ... make the buffer bigger ...
+        write_buffer = realloc(write_buffer, size);
+        // ... and store the argument in the buffer.
+        strcat(write_buffer, arg);
+        strcat(write_buffer, ";");
+    }
+    // Finally write \n and zero byte to buffer.
+    size = size + 2;
+    write_buffer = realloc(write_buffer, size);
+    strcat(write_buffer, "\n\0");
 
-	size_t fs;
-	fseek(fp, 0L, SEEK_END);
-	fs = ftell(fp);
-	rewind(fp);
+    va_end(args);
 
-	if (!fs) {
-		fputs("timestamp_ms,event\n", fp);
-	}
+    // Write buffer to the file.
+    char eval_path[81];
 
-	fputs(event, fp);
-	fclose(fp);
-}
+    // Determine the right filename.
+    if (mode == 0) {
+        sprintf(eval_path, "/tmp/%s_server.csv", alloca_tohex_sid_t(my_subscriber->sid));
+    } else if (mode == 1) {
+        sprintf(eval_path, "/tmp/%s_client.csv", alloca_tohex_sid_t(my_subscriber->sid));
+    }
 
-void _rpc_eval_event (int mode, char *event_message, sid_t sid) {
-	time_t event_time = time(NULL);
+    // Open file, ...
+    FILE *fp = fopen(eval_path, "a+");
 
-	if (is_sid_t_any(sid) || is_sid_t_broadcast(sid)) {
-		char event[13 + 1 + strlen(event_message) + 1];
-		sprintf(event, "%ld,%s\n", event_time, event_message);
-		_rpc_eval_write_log (mode, alloca_tohex_sid_t(my_subscriber->sid), event);
-	} else {
-		char event[13 + 1 + strlen(event_message) + 3 + 64 + 1];
-		sprintf(event, "%ld,%s - %s\n", event_time, event_message, alloca_tohex_sid_t(sid));
-		_rpc_eval_write_log (mode, alloca_tohex_sid_t(my_subscriber->sid), event);
-	}
+    // ... get the file size, ...
+    size_t fs;
+    fseek(fp, 0L, SEEK_END);
+    fs = ftell(fp);
+    rewind(fp);
+
+    // ... write the header if it is empty ...
+    if (!fs) {
+        fputs("timestamp_ms,event\n", fp);
+    }
+
+    // and finally write the content to the file.
+    fputs(write_buffer, fp);
+
+    // Cleanup
+    fclose(fp);
+    free(write_buffer);
 }
 
 // Write 1 byte number to payload array.

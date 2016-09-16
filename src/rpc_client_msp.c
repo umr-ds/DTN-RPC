@@ -25,16 +25,16 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
         struct mdp_sockaddr addr;
         bzero(&addr, sizeof addr);
         msp_get_remote(sock, &addr);
-        _rpc_eval_event(1, "received data MSP", addr.sid);
+        _rpc_eval_event(1, 3, "received data MSP", alloca_tohex_sid_t(addr.sid), current_rpc);
         // Get the packet type.
         uint8_t pkt_type = read_uint8(&payload[0]);
         // If we receive an ACK, just print.
         if (pkt_type == RPC_PKT_CALL_ACK) {
-            _rpc_eval_event(1, "received ACK MSP", addr.sid);
+            _rpc_eval_event(1, 3, "received ACK MSP", alloca_tohex_sid_t(addr.sid), current_rpc);
             pinfo("Server accepted call.");
             received = 1;
         } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
-            _rpc_eval_event(1, "received result MSP", addr.sid);
+            _rpc_eval_event(1, 3, "received result MSP", alloca_tohex_sid_t(addr.sid), current_rpc);
             pinfo("Answer received.");
 			if (_rpc_str_is_filehash((char *) &payload[1])) {
 				char fpath[128 + strlen(current_rpc) + 3];
@@ -52,7 +52,7 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 
 // Direct call function.
 int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params, uint32_t requirements) {
-    _rpc_eval_event(1, "calling MSP", sid);
+    _rpc_eval_event(1, 3, "calling MSP", alloca_tohex_sid_t(sid), rpc_name);
 	// Check if the sid is even reachable before doing anything else.
 	if (!_rpc_sid_is_reachable(sid)) {
 		return -1;
@@ -99,7 +99,7 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params, u
 	_rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params, requirements);
 
 	// Send the payload.
-    _rpc_eval_event(1, "sending call MSP", sid);
+    _rpc_eval_event(1, 3, "sending call MSP", alloca_tohex_sid_t(sid), rpc_name);
 	msp_send(sock, payload, sizeof(payload));
 
 
