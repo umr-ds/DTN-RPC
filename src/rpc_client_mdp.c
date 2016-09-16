@@ -2,6 +2,7 @@
 
 // MDP call function.
 int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **params, uint32_t requirements) {
+	_rpc_eval_event(1, "calling MDP", server_sid);
 	// If the server_sid is not broadcast or any, we have to check, if the server is available.
 	if (!is_sid_t_any(server_sid) && !is_sid_t_broadcast(server_sid) && !_rpc_sid_is_reachable(server_sid)) {
 		pfatal("Server %s not reachable. Aborting.", alloca_tohex_sid_t(server_sid));
@@ -71,6 +72,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
         // Send the call until we get at least one ack.
 		if (received == 0) {
 			// Send the payload.
+			_rpc_eval_event(1, "sending call MDP", server_sid);
 			if (mdp_send(mdp_sockfd, &mdp_header, payload, sizeof(payload)) < 0) {
 				pfatal("Could not send packet. Aborting.");
 				return -1;
@@ -87,6 +89,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 			// Set the payloadsize.
 			uint8_t recv_payload[RPC_PKT_SIZE];
 			ssize_t incoming_len = mdp_recv(mdp_sockfd, &mdp_recv_header, recv_payload, sizeof(recv_payload));
+			_rpc_eval_event(1, "received data MDP", mdp_recv_header.remote.sid);
 
             // Skip empty packets.
 			if (incoming_len < 0) {
@@ -98,6 +101,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	        uint8_t pkt_type = read_uint8(&recv_payload[0]);
 	        // If we receive an ACK, just print.
 	        if (pkt_type == RPC_PKT_CALL_ACK) {
+				_rpc_eval_event(1, "received ACK MDP", mdp_recv_header.remote.sid);
                 // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
                 if (is_sid_t_broadcast(server_sid) && _rpc_client_result_get_sid_index(server_sid) == -1) {
                     int position = rpc_client_result_get_insert_index();
@@ -108,6 +112,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	            pinfo("Server %s accepted call.", alloca_tohex_sid_t(mdp_recv_header.remote.sid));
 	            received = 1;
 	        } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
+				_rpc_eval_event(1, "received result MDP", mdp_recv_header.remote.sid);
 				// If we received the result, copy it to the result array:
 	            pinfo("Answer received from %s.", alloca_tohex_sid_t(mdp_recv_header.remote.sid));
                 // First, see if this SID has already an entry in the result array. If not, skip.

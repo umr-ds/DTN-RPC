@@ -22,6 +22,8 @@ int _rpc_str_is_filehash (char *hash);
 void write_uint8 (uint8_t *payload, uint8_t value);
 uint8_t read_uint8 (const uint8_t *payload);
 
+void _rpc_eval_event (int mode, char *event_message, sid_t sid);
+
 /**** cURL helpers. ****/
 struct CurlResultMemory {
   char *memory;

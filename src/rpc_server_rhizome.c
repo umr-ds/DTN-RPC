@@ -4,6 +4,7 @@
 int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload) {
     int return_code = 1;
 
+    _rpc_eval_event(0, "preparing result Rhizome", sid);
     // Construct the manifest and write it to the manifest file.
     int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
     char manifest_str[manifest_size];
@@ -42,6 +43,7 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
     _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
     // Perfom request, which means insert the RPC file to the store.
+    _rpc_eval_event(0, "inserting result Rhizome", sid);
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
         pfatal("CURL failed (post server result): %s. Aborting.", curl_easy_strerror(curl_res));
@@ -118,6 +120,9 @@ int _rpc_server_rhizome_process () {
         char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
         // ... the recipient from the recent file.
         char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
+        // Parse the sender SID to sid_t
+        sid_t server_sid;
+        str_to_sid_t(&server_sid, sender);
 
         // Check, if this file is an RPC packet and if it is not from but for the client.
         int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
@@ -130,6 +135,7 @@ int _rpc_server_rhizome_process () {
 
         // If this is an interesting file: handle it.
         if (service_is_rpc  && not_my_file) {
+            _rpc_eval_event(0, "Found potential call Rhizome", server_sid);
             // Free everyhing, again.
             _rpc_curl_reinit_memory(&curl_result_memory);
             curl_slist_free_all(header);
@@ -143,6 +149,7 @@ int _rpc_server_rhizome_process () {
             _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
             // Decrypt the file.
+            _rpc_eval_event(0, "extracting potential call Rhizome", server_sid);
             curl_res = curl_easy_perform(curl_handler);
             if (curl_res != CURLE_OK) {
                 pfatal("CURL failed (decrypt server process): %s.", curl_easy_strerror(curl_res));
@@ -156,6 +163,7 @@ int _rpc_server_rhizome_process () {
             memcpy(recv_payload, curl_result_memory.memory, filesize);
 
             if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL) {
+                _rpc_eval_event(0, "call received Rhizome", server_sid);
                 pinfo("Received RPC via Rhizome.");
                 // Parse the payload to the RPCProcedure struct
                 struct RPCProcedure rp = _rpc_server_parse_call(recv_payload, filesize);
@@ -167,6 +175,7 @@ int _rpc_server_rhizome_process () {
 
                 // Check, if we offer this procedure and we should accept the call.
                 if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&recv_payload[1]))) {
+                    _rpc_eval_event(0, "sending ACK Rhizome", server_sid);
                     pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                     // Compile and send ACK packet.
@@ -178,8 +187,10 @@ int _rpc_server_rhizome_process () {
 				    uint8_t result_payload[RPC_PKT_SIZE];
                     memset(result_payload, 0, RPC_PKT_SIZE);
 	                if (_rpc_server_excecute(result_payload, rp)) {
+                        _rpc_eval_event(0, "sending result Rhizome", server_sid);
 						pinfo("Sending result via Rhizome.");
         				_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
+                        _rpc_eval_event(0, "RPC success Rhizome", server_sid);
                         pinfo("RPC execution was successful.\n");
                     }
                 } else {
@@ -196,6 +207,5 @@ int _rpc_server_rhizome_process () {
     clean_rhizome_server_listener:
         _rpc_curl_free_memory(&curl_result_memory);
         curl_global_cleanup();
-
     return return_code;
 }

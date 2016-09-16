@@ -1,5 +1,44 @@
 #include "rpc.h"
 
+// Write event to file.
+void _rpc_eval_write_log (int mode, char *own_sid, char *event) {
+	char eval_path[81];
+
+	if (mode == 0) {
+		sprintf(eval_path, "/tmp/%s_server.csv", own_sid);
+	} else if (mode == 1) {
+		sprintf(eval_path, "/tmp/%s_client.csv", own_sid);
+	}
+
+	FILE *fp = fopen(eval_path, "a+");
+
+	size_t fs;
+	fseek(fp, 0L, SEEK_END);
+	fs = ftell(fp);
+	rewind(fp);
+
+	if (!fs) {
+		fputs("timestamp_ms,event\n", fp);
+	}
+
+	fputs(event, fp);
+	fclose(fp);
+}
+
+void _rpc_eval_event (int mode, char *event_message, sid_t sid) {
+	time_t event_time = time(NULL);
+
+	if (is_sid_t_any(sid) || is_sid_t_broadcast(sid)) {
+		char event[13 + 1 + strlen(event_message) + 1];
+		sprintf(event, "%ld,%s\n", event_time, event_message);
+		_rpc_eval_write_log (mode, alloca_tohex_sid_t(my_subscriber->sid), event);
+	} else {
+		char event[13 + 1 + strlen(event_message) + 3 + 64 + 1];
+		sprintf(event, "%ld,%s - %s\n", event_time, event_message, alloca_tohex_sid_t(sid));
+		_rpc_eval_write_log (mode, alloca_tohex_sid_t(my_subscriber->sid), event);
+	}
+}
+
 // Write 1 byte number to payload array.
 // Does not meet _rpc_.* naming convetion to keep naming similiar to other write_uint.* function from Serval.
 void write_uint8 (uint8_t *payload, uint8_t value) {
@@ -161,6 +200,8 @@ int _rpc_sid_is_reachable (sid_t sid) {
 
 // Download file if it is an complex RPC.
 int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
+	sid_t event_sid;
+	str_to_sid_t(&event_sid, sid);
     int return_code = -1;
 
 	// Init the cURL stuff.

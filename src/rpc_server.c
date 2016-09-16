@@ -39,6 +39,8 @@ void _rpc_server_parse_requirements (int *result, uint32_t raw) {
 // Function to check, if a RPC is offered by this server.
 // Load and parse the rpc.conf file.
 int _rpc_server_offering (struct RPCProcedure *rp) {
+    _rpc_eval_event(0, "checking offered", rp->caller_sid);
+
     pinfo("Checking, if \"%s\" is offered.", rp->name);
     // Build the path to the rpc.conf file and open it.
     int path_size = strlen(SYSCONFDIR) + strlen(SERVAL_FOLDER) + strlen(RPC_CONF_FILENAME) + 1;
@@ -81,6 +83,7 @@ int _rpc_server_offering (struct RPCProcedure *rp) {
 
 // Function to parse the received payload.
 struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
+    _rpc_eval_event(0, "parsing call", SID_ANY);
     pinfo("Parsing call.");
     // Create a new rp struct.
     struct RPCProcedure rp;
@@ -121,6 +124,7 @@ struct RPCProcedure _rpc_server_parse_call (uint8_t *payload, size_t len) {
 
 // Execute the procedure
 int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
+    _rpc_eval_event(0, "executing", rp.caller_sid);
     pinfo("Executing \"%s\".", rp.name);
     FILE *pipe_fp;
 
@@ -184,6 +188,8 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
 
 // Main listening function.
 int rpc_server_listen () {
+    _rpc_eval_event(0, "listen start", SID_ANY);
+
 	server_mode = RPC_SERVER_MODE_ALL;
 	// Setup MDP and MSP.
     if (_rpc_server_msp_setup() == -1) {
@@ -212,11 +218,14 @@ int rpc_server_listen () {
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }
+    _rpc_eval_event(0, "listen stop", SID_ANY);
 	return 0;
 }
 
 // MDP listening function.
 int rpc_server_listen_msp () {
+    _rpc_eval_event(0, "listen start MSP", SID_ANY);
+
 	server_mode = RPC_SERVER_MODE_MSP;
 	// Setup MSP.
     if (_rpc_server_msp_setup() == -1) {
@@ -235,11 +244,14 @@ int rpc_server_listen_msp () {
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }
+    _rpc_eval_event(0, "listen stop MSP", SID_ANY);
 	return 0;
 }
 
 // Rhizome listening function.
 int rpc_server_listen_rhizome () {
+    _rpc_eval_event(0, "listen start Rhizome", SID_ANY);
+
 	server_mode = RPC_SERVER_MODE_RHIZOME;
 	// Run RPC server.
     while (server_running < 1) {
@@ -251,11 +263,14 @@ int rpc_server_listen_rhizome () {
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }
+    _rpc_eval_event(0, "listen stop Rhizome", SID_ANY);
 	return 0;
 }
 
 // MDP listening function.
 int rpc_server_listen_mdp_broadcast () {
+    _rpc_eval_event(0, "listen start MDP", SID_ANY);
+
 	server_mode = RPC_SERVER_MODE_MDP;
 	// Setup MDP.
 	if (_rpc_server_mdp_setup() == -1) {
@@ -274,5 +289,6 @@ int rpc_server_listen_mdp_broadcast () {
         // To not drive the CPU crazy, check only once a second for new packets.
         sleep(1);
     }
+    _rpc_eval_event(0, "listen stop MDP", SID_ANY);
 	return 0;
 }
