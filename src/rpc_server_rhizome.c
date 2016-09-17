@@ -194,6 +194,7 @@ int _rpc_server_rhizome_process () {
                         pinfo("RPC execution was successful.\n");
                     }
                 } else {
+                    _rpc_eval_event(0, 2, "WARN-not offering", sender);
                     pwarn("Not offering desired RPC. Ignoring.");
                     return_code = -1;
                 }

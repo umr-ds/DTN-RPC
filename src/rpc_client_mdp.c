@@ -6,6 +6,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	// If the server_sid is not broadcast or any, we have to check, if the server is available.
 	if (!is_sid_t_any(server_sid) && !is_sid_t_broadcast(server_sid) && !_rpc_sid_is_reachable(server_sid)) {
 		pfatal("Server %s not reachable. Aborting.", alloca_tohex_sid_t(server_sid));
+        _rpc_eval_event(1, 3, "FATAL-server not reachable", alloca_tohex_sid_t(server_sid), rpc_name);
 		return -1;
 	}
 

@@ -54,18 +54,21 @@ size_t _rpc_server_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
 						}
 					} else if (server_mode == RPC_SERVER_MODE_ALL) {
 						// Use Rhizome if MSP is not available and server_mode is ALL.
+                        _rpc_eval_event(0, 2, "WARN-sending result via Rhizome MSP", alloca_tohex_sid_t(addr.sid));
 						pwarn("MSP not available for result. Sending via Rhizome.");
 						_rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
 					} else {
+                        _rpc_eval_event(0, 2, "FATAL-can not send result MSP", alloca_tohex_sid_t(addr.sid));
 						pfatal("MSP not available for result. Aborting.");
 					}
 					ret = len;
 				} else {
-					_rpc_eval_event(0, 2, "RPC success MSP", alloca_tohex_sid_t(addr.sid));
+                    _rpc_eval_event(0, 2, "FATAL-execution was not successful MSP", alloca_tohex_sid_t(addr.sid));
 					pfatal("RPC execution was not successful. Aborting.");
 					ret = len;
 				}
 			} else {
+                _rpc_eval_event(0, 2, "WARN-not offering", alloca_tohex_sid_t(addr.sid));
 				pwarn("Not offering desired RPC. Ignoring.");
 				ret = len;
 			}

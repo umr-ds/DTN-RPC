@@ -178,6 +178,7 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
             pfatal("Execution of \"%s\" went wrong. See errormessages above for more information. Status %i.", flat_params, WEXITSTATUS(ret_code));
             return 0;
         }
+        _rpc_eval_event(0, 3, "execution done", alloca_tohex_sid_t(rp.caller_sid), rp.name);
         pinfo("Returned result from Binary.");
         free(flat_params);
     } else {
