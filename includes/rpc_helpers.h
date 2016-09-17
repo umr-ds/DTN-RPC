@@ -7,7 +7,7 @@
 #define RPC_DEBUG   "\033[1m\033[34mRPC DEBUG: \033[0m\033[34m" /* Blue */
 
 // Marcros for colorfull printing.
-#define pfatal(fmt, ...)    printf(RPC_FATAL fmt RPC_RESET "\n", ##__VA_ARGS__);
+#define pfatal(fmt, ...)    fprintf(stderr, RPC_FATAL fmt RPC_RESET "\n", ##__VA_ARGS__);
 #define pinfo(fmt, ...)     printf(RPC_INFO fmt RPC_RESET "\n", ##__VA_ARGS__);
 #define pwarn(fmt, ...)     printf(RPC_WARN fmt RPC_RESET "\n", ##__VA_ARGS__);
 #define pdebug(fmt, ...)    printf(RPC_DEBUG fmt RPC_RESET "\n", ##__VA_ARGS__);
@@ -38,4 +38,3 @@ void _rpc_curl_free_memory (struct CurlResultMemory *curl_result_memory);
 void _rpc_curl_set_basic_opt (char* url, CURL *curl_handler, struct curl_slist *header);
 
 void _rpc_curl_add_file_form (char *tmp_manifest_file_name, char *tmp_payload_file_name, CURL *curl_handler, struct curl_httppost *formpost, struct curl_httppost *lastptr);
-
