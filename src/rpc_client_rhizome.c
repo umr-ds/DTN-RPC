@@ -107,7 +107,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
             // Parse the sender SID to sid_t
 
             if (service_is_rpc && not_my_file && name_is_rpc && not_to_old) {
-                sid_t server_sid;
+				sid_t server_sid;
                 str_to_sid_t(&server_sid, sender);
                 _rpc_eval_event(1, 3, "found potential response Rhizome", sender, name);
                 // Free everyhing, again.
@@ -309,4 +309,3 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 
     return return_code;
 }
-
