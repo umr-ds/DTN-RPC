@@ -105,10 +105,10 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
             int name_is_rpc = !strncmp(name, rpc_name, strlen(rpc_name));
             int not_to_old = time(NULL) - inserttime < 600000;
             // Parse the sender SID to sid_t
-            sid_t server_sid;
-            str_to_sid_t(&server_sid, sender);
 
             if (service_is_rpc && not_my_file && name_is_rpc && not_to_old) {
+				sid_t server_sid;
+                str_to_sid_t(&server_sid, sender);
                 // Free everyhing, again.
                 _rpc_curl_reinit_memory(&curl_result_memory);
                 curl_slist_free_all(header);
@@ -302,4 +302,3 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
 
     return return_code;
 }
-
