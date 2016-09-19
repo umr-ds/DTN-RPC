@@ -230,7 +230,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
 	        // Check, if this file is an RPC packet and if it is not from but for the client.
 	        int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
 	        int filename_is_right = !strncmp(name, rpc_cmp_name, strlen(rpc_cmp_name));
-	        int right_client = !strncmp(alloca_tohex_sid_t(SID_BROADCAST), sid, strlen(sid)) || !strncmp(sender, sid, strlen(sid));
+            int right_client = sender && (!strncmp(alloca_tohex_sid_t(SID_BROADCAST), sid, strlen(sid)) || !strncmp(sender, sid, strlen(sid)));
 			int not_my_file = 0;
 			if (recipient) {
 	        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
