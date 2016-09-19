@@ -149,11 +149,14 @@ int _rpc_server_rhizome_process () {
             // ... the id, ...
             char *id = cJSON_GetArrayItem(recent_file, 3)->valuestring;
             // ... the sender from the recent file.
+            size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
+            // ... the sender from the recent file.
             char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
             // ... the recipient from the recent file.
             char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
 
-            // Check, if the call was done already, if this file is an RPC packet and if it is not from but for a client.
+            // Check, if the file fits in MDP_MTU, if the call was done already, if this file is an RPC packet and if it is not from but for a client.
+            int not_too_big = (0 < filesize) && (filesize <= MDP_MTU);
             int not_done = !_rpc_server_rhizome_done(id);
             int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
             int not_my_file = 0;
@@ -164,7 +167,7 @@ int _rpc_server_rhizome_process () {
             }
 
             // If this is an interesting file: handle it.
-            if (service_is_rpc && not_my_file && not_done) {
+            if (service_is_rpc && not_my_file && not_done && not_too_big) {
 	            _rpc_eval_event(0, 2, "Found potential call Rhizome", sender);
                 // Free everyhing, again.
                 _rpc_curl_reinit_memory(&curl_result_memory);
@@ -188,7 +191,6 @@ int _rpc_server_rhizome_process () {
                 }
 
                 // Copy the payload for manipulations.
-                size_t filesize = cJSON_GetArrayItem(recent_file, 9)->valueint;
                 uint8_t recv_payload[filesize];
                 memcpy(recv_payload, curl_result_memory.memory, filesize);
 
