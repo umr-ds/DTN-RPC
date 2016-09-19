@@ -120,9 +120,6 @@ int _rpc_server_rhizome_process () {
         char *sender = cJSON_GetArrayItem(recent_file, 11)->valuestring;
         // ... the recipient from the recent file.
         char *recipient = cJSON_GetArrayItem(recent_file, 12)->valuestring;
-        // Parse the sender SID to sid_t
-        sid_t server_sid;
-        str_to_sid_t(&server_sid, sender);
 
         // Check, if this file is an RPC packet and if it is not from but for the client.
         int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
