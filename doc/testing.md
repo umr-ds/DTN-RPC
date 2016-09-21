@@ -29,11 +29,6 @@ Then go to the CORE folder and run the folowing commands to prepare, configure, 
 ~/core$ sudo make install
 ```
 
-<The last step is to get the needed services for ServalRPC. You already downloaded the required repos. First you have to enable custom services. To do so, uncomment the line `custom_services_dir = /home/username/.core/myservices` and change the `username` to you username in the `/etc/core/core.conf` file.
-
-The easiest way is to symlink all files to the `~/.core` folder:
->
-
 Now you have to edit some files to meet your local paths. You need a folder where later on all configs for Serval and ServalRPC go to. For simplicity name it `serval-conf` and make it in you home directory:
 
 ```
