@@ -23,7 +23,7 @@ You also need a custom repo, where the service scripts are and a patch which fix
 In order to log network traffic later on you need two python packages: `pcap` and `dpkt` which both can be install with
 
 ```
-~$ sudo apt-get install python-pycap
+~$ sudo apt-get install python-pypcap
 ~$ sudo apt-get install python-dpkt
 ```
 
