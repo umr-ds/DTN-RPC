@@ -20,6 +20,13 @@ You also need a custom repo, where the service scripts are and a patch which fix
 ~$ patch core/daemon/core/netns/vnode.py servalrpc-tests-core-scripts/broadcast-fix.patch
 ```
 
+In order to log network traffic later on you need two python packages: `pcap` and `dpkt` which both can be install with
+
+```
+~$ sudo apt-get install python-pycap
+~$ sudo apt-get install python-dpkt
+```
+
 Then go to the CORE folder and run the folowing commands to prepare, configure, build and install CORE.
 
 ```
