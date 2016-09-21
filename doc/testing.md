@@ -32,7 +32,7 @@ Then go to the CORE folder and run the folowing commands to prepare, configure, 
 Now you have to edit some files to meet your local paths. You need a folder where later on all configs for Serval and ServalRPC go to. For simplicity name it `serval-conf` and make it in you home directory:
 
 ```
-~$ mkdir serval-rpc
+~$ mkdir serval-conf
 ```
 
 Now you can replace all occurences of `meshadmin` with you username. All other folders you see are not required per-se, but created ad-hoc by CORE temporarily.
