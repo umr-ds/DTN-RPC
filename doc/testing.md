@@ -99,7 +99,7 @@ Clone the last two repositories from Github:
 ~$ git clone https://github.com/adur1990/servalrpc-tests-suite.git
 ```
 
-Here are also some changes required. First, the `auto-scenario` script copies finished tests out of `/tmp`. This has to be changed to a location of your choise in line 103.
+Here are also some changes required. First, the `auto-scenario` script copies finished tests out of `/tmp`. This has to be changed to a location of your choise in line 103 and 106.
 Another change has to be made is in the `run_core_topology.py` script int the line `myservices_path` has to be changed to the `core-scripts/myservices` path downloaded earlier.
 
 The test sripts have to be in `/serval-tests`. It is recommended to symlink the cloned folder to that location.
