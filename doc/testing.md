@@ -17,7 +17,7 @@ You also need a custom repo, where the service scripts are and a patch which fix
 
 ```
 ~$ git clone https://github.com/adur1990/servalrpc-tests-core-scripts.git
-~$ patch core/daemon/core/netns/vnode.py servalrpc-tests-core-scripts/broadcast-fix.patch
+~$ patch core/daemon/core/netns/vnode.py < servalrpc-tests-core-scripts/broadcast-fix.patch
 ```
 
 In order to log network traffic later on you need two python packages: `pcap` and `dpkt` which both can be install with
