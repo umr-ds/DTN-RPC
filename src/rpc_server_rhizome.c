@@ -167,7 +167,7 @@ int _rpc_server_rhizome_process () {
             }
 
             // If this is an interesting file: handle it.
-            if (service_is_rpc && not_my_file && not_done && not_too_big) {
+			if (service_is_rpc && not_my_file && not_done && not_too_big) {
 	            _rpc_eval_event(0, 2, "Found potential call Rhizome", sender);
                 // Free everyhing, again.
                 _rpc_curl_reinit_memory(&curl_result_memory);
