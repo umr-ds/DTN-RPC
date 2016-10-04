@@ -53,7 +53,7 @@ void _rpc_eval_event (int mode, int n_args, ...) {
 
     // ... write the header if it is empty ...
     if (!fs) {
-        fputs("timestamp_ms,event\n", fp);
+        fputs("timestamp,event\n", fp);
     }
 
     // and finally write the content to the file.
