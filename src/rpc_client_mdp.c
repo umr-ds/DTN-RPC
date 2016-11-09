@@ -54,7 +54,7 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
     fds->events = POLLIN;
 
 	time_t start_time = time(NULL);
-	int wait_time = 10;
+	int wait_time = 210;
 	while (received == 0 || received == 1) {
 
         // Wait for 10 seconds for answer (While develpment. Later maybe longer).

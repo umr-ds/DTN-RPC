@@ -19,7 +19,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 
     char *token = NULL;
     time_t start_time = time(NULL);
-    int wait_time = 20;
+    int wait_time = 210;
 	while (!received) {
 
         //Wait for 20 seconds for answer (While develpment. Later maybe longer).
