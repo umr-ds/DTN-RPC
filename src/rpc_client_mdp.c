@@ -55,18 +55,19 @@ int rpc_client_call_mdp (sid_t server_sid, char *rpc_name, int paramc, char **pa
 	int wait_time = 10;
 	while (received == 0 || received == 1) {
 
-        // Wait for 10 seconds for answer (While develpment. Later maybe longer).
-		if (time(NULL) - start_time > wait_time) {
-            // If we hit the timeout, get the number of elements in the result array.
-            int num_answers = rpc_client_result_get_insert_index();
-            // If the SID is the broadcast id we check if we have at least one answer.
-            if (is_sid_t_broadcast(server_sid) && num_answers > 0) {
-                received = 2;
-            } else {
-                mdp_close(mdp_sockfd);
-                return -1;
+            // Wait for 30 seconds for answer (While develpment. Later maybe longer).
+            if (time(NULL) - start_time > wait_time) {
+                // If we hit the timeout, get the number of elements in the result array.
+                int num_answers = rpc_client_result_get_insert_index();
+                // If the SID is the broadcast id we check if we have at least one answer.
+                if (is_sid_t_broadcast(server_sid) && num_answers > 0) {
+                    mdp_close(mdp_sockfd);
+                    return 2;
+                } else {
+                    mdp_close(mdp_sockfd);
+                    return received;
+                }
             }
-		}
 
         // Send the call until we get at least one ack.
 		if (received == 0) {

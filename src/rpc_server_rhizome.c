@@ -20,7 +20,7 @@ void _rpc_server_rhizome_finished (char *id) {
         done_calls = malloc(0);
     }
     done_calls_size = done_calls_size + 1;
-    done_calls = realloc(done_calls, done_calls_size);
+    done_calls = realloc(done_calls, done_calls_size * sizeof(char*));
     size_t id_size = strlen(id);
     done_calls[done_calls_size - 1] = calloc(id_size + 1, sizeof(char));
     strcpy(done_calls[done_calls_size - 1], id);
