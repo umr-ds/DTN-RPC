@@ -25,12 +25,10 @@ size_t _rpc_client_msp_handler (MSP_SOCKET sock, msp_state_t state, const uint8_
         struct mdp_sockaddr addr;
         bzero(&addr, sizeof addr);
         msp_get_remote(sock, &addr);
-        _rpc_eval_event(1, 3, "received data MSP", alloca_tohex_sid_t(addr.sid), current_rpc);
         // Get the packet type.
         uint8_t pkt_type = read_uint8(&payload[0]);
         // If we receive an ACK, just print.
         if (pkt_type == RPC_PKT_CALL_ACK) {
-            _rpc_eval_event(1, 3, "received ACK MSP", alloca_tohex_sid_t(addr.sid), current_rpc);
             pinfo("Server accepted call.");
             received = 1;
         } else if (pkt_type == RPC_PKT_CALL_RESPONSE) {
@@ -99,7 +97,6 @@ int rpc_client_call_msp (sid_t sid, char *rpc_name, int paramc, char **params, u
 	_rpc_client_prepare_call_payload(payload, paramc, rpc_name, flat_params, requirements);
 
 	// Send the payload.
-    _rpc_eval_event(1, 3, "sending call MSP", alloca_tohex_sid_t(sid), rpc_name);
 	msp_send(sock, payload, sizeof(payload));
 
 

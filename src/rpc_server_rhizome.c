@@ -20,7 +20,7 @@ void _rpc_server_rhizome_finished (char *id) {
         done_calls = malloc(0);
     }
     done_calls_size = done_calls_size + 1;
-    done_calls = realloc(done_calls, done_calls_size);
+    done_calls = realloc(done_calls, done_calls_size * sizeof(char*));
     size_t id_size = strlen(id);
     done_calls[done_calls_size - 1] = calloc(id_size + 1, sizeof(char));
     strcpy(done_calls[done_calls_size - 1], id);
@@ -30,7 +30,6 @@ void _rpc_server_rhizome_finished (char *id) {
 int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload) {
     int return_code = 1;
 
-    _rpc_eval_event(0, 3, "preparing result Rhizome", alloca_tohex_sid_t(sid), rpc_name);
     // Construct the manifest and write it to the manifest file.
     int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
     char manifest_str[manifest_size];
@@ -69,7 +68,6 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
     _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
     // Perfom request, which means insert the RPC file to the store.
-    _rpc_eval_event(0, 3, "inserting result Rhizome", alloca_tohex_sid_t(sid), rpc_name);
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
         pfatal("CURL failed (post server result): %s. Aborting.", curl_easy_strerror(curl_res));
@@ -168,7 +166,6 @@ int _rpc_server_rhizome_process () {
 
             // If this is an interesting file: handle it.
 			if (service_is_rpc && not_my_file && not_done && not_too_big) {
-	            _rpc_eval_event(0, 2, "Found potential call Rhizome", sender);
                 // Free everyhing, again.
                 _rpc_curl_reinit_memory(&curl_result_memory);
                 curl_slist_free_all(header);
@@ -182,7 +179,6 @@ int _rpc_server_rhizome_process () {
                 _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
                 // Decrypt the file.
-	            _rpc_eval_event(0, 2, "extracting potential call Rhizome", sender);
                 curl_res = curl_easy_perform(curl_handler);
                 if (curl_res != CURLE_OK) {
                     pfatal("CURL failed (decrypt server process): %s.", curl_easy_strerror(curl_res));
@@ -207,7 +203,6 @@ int _rpc_server_rhizome_process () {
 
                     // Check, if we offer this procedure and we should accept the call.
                     if (_rpc_server_offering(&rp) && _rpc_server_accepts(&rp, read_uint32(&recv_payload[1]))) {
-	                    _rpc_eval_event(0, 2, "sending ACK Rhizome", sender);
                         pinfo("Offering desired RPC. Sending ACK via Rhizome.");
 
                         // Compile and send ACK packet.
@@ -223,12 +218,10 @@ int _rpc_server_rhizome_process () {
                             pinfo("Sending result via Rhizome.");
                             _rpc_server_rhizome_send_result(rp.caller_sid, rp.name, result_payload);
                             pinfo("RPC execution was successful.\n");
-	                        _rpc_eval_event(0, 2, "RPC success Rhizome", sender);
                             _rpc_server_rhizome_finished(id);
 
                         }
                     } else {
-	                    _rpc_eval_event(0, 2, "WARN-not offering", sender);
                         pwarn("Not offering desired RPC. Ignoring.");
                         return_code = -1;
                     }

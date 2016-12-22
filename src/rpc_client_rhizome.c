@@ -19,7 +19,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 
     char *token = NULL;
     time_t start_time = time(NULL);
-    int wait_time = 210;
+    int wait_time = 180;
 	while (!received) {
 
         //Wait for 20 seconds for answer (While develpment. Later maybe longer).
@@ -109,7 +109,6 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
             if (service_is_rpc && not_my_file && name_is_rpc && not_to_old) {
 				sid_t server_sid;
                 str_to_sid_t(&server_sid, sender);
-                _rpc_eval_event(1, 3, "found potential response Rhizome", sender, name);
                 // Free everyhing, again.
                 _rpc_curl_reinit_memory(&curl_result_memory);
                 curl_slist_free_all(header);
@@ -123,7 +122,6 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
                 _rpc_curl_set_basic_opt(url_decrypt, curl_handler, header);
 
                 // Decrypt the file.
-                _rpc_eval_event(1, 3, "extracting potential response Rhizome", sender, name);
                 curl_res = curl_easy_perform(curl_handler);
                 if (curl_res != CURLE_OK) {
                     pfatal("CURL failed (decrypt Rhizome call): %s.", curl_easy_strerror(curl_res));
@@ -138,13 +136,12 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 
                 if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL_ACK) {
 
-                    _rpc_eval_event(1, 3, "received ACK Rhizome", sender, name);
                     // If this was an "all" call, and the server_sid is not in the result array yet, we store it.
                     if (is_sid_t_broadcast(sid) && _rpc_client_result_get_sid_index(sid) == -1) {
                         int position = rpc_client_result_get_insert_index();
                         memcpy(&rpc_result[position].server_sid, &server_sid, sizeof(sid_t));
                     }
-                    wait_time = wait_time == 20 ? 120 : wait_time;
+                    wait_time += 0;
                     pinfo("Server %s accepted call.", sender);
                     return_code = 1;
                 } else if (read_uint8(&recv_payload[0]) == RPC_PKT_CALL_RESPONSE) {
@@ -286,7 +283,6 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     _rpc_curl_add_file_form(tmp_manifest_file_name, tmp_payload_file_name, curl_handler, formpost, lastptr);
 
     // Perfom request, which means insert the RPC file to the store.
-    _rpc_eval_event(1, 3, "sending call  Rhizome", alloca_tohex_sid_t(sid), rpc_name);
     curl_res = curl_easy_perform(curl_handler);
     if (curl_res != CURLE_OK) {
         pfatal("CURL failed (post Rhizome call): %s. Aborting.", curl_easy_strerror(curl_res));
