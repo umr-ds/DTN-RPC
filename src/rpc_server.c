@@ -45,6 +45,12 @@ int _rpc_server_offering (struct RPCProcedure *rp) {
     char path[path_size];
     memset(path, 0, path_size);
     FORMF_SERVAL_ETC_PATH(path, RPC_CONF_FILENAME);
+
+	if (access(path, F_OK)) {
+		pfatal("No rpc.conf file found. It should be in %s%s.", SYSCONFDIR, SERVAL_FOLDER);
+		return 0;
+	}
+
     FILE *conf_file = fopen(path, "r");
 
     char *line = NULL;
