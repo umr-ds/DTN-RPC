@@ -59,7 +59,6 @@ int _check_cli (char *arg, char *option, char *abbrev) {
 // Function to parse comma separated values of requirements
 void _str_to_int_arr (int *values, char *input_string) {
 	char *val_str = strtok(input_string, ",");
-
 	int i = 0;
 	while (val_str && i < 8) {
 		values[i] = atoi(val_str);
@@ -139,7 +138,11 @@ int main (int argc, char **argv) {
 		}
 
 		// Get length of additional arguments...
-		unsigned int nfields = argc - (offset + 3);
+		unsigned int num_commas;
+		char *last_arg = argv[argc - 1];
+		int last_arg_len = strlen(argv[argc - 1]);
+		for (num_commas = 0; last_arg[num_commas]; last_arg[num_commas]==',' ? num_commas++ : *last_arg++);
+		unsigned int nfields = num_commas == 7 && last_arg_len == 15 ? argc - (offset + 3) : argc - (offset + 2);
 		// and create new parameter array of the particular length.
 		char *params[nfields + 1];
 		params[0] = param1;
@@ -152,7 +155,12 @@ int main (int argc, char **argv) {
 		}
 
 		int values[8];
-		_str_to_int_arr(values, argv[argc - 1]);
+		if (num_commas == 7 && last_arg_len == 15) {
+			_str_to_int_arr(values, argv[argc - 1]);
+		} else {
+			char def[] = "0,0,0,0,0,0,0,0";
+			_str_to_int_arr(values, def);
+		}
 
 		uint32_t requirements = rpc_client_prepare_requirements(values);
 
