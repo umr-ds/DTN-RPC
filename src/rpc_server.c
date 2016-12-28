@@ -134,6 +134,12 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     char bin[strlen(SYSCONFDIR) + strlen(BIN_FOLDER) + strlen(rp.name)];
     sprintf(bin, "%s%s%s", SYSCONFDIR, BIN_FOLDER, rp.name);
 
+	// pdebug("");
+	if (access(bin, F_OK)){
+		pfatal("Binary \"%s\" not found. It should be in %s%s. Aborting.", rp.name, SYSCONFDIR, BIN_FOLDER);
+		return 0;
+	}
+
 	// Since we use popen, which expects a string where the binary with all parameters delimited by spaces is stored,
 	// we have to compile the bin with all parameters from the struct.
 	// If this is an complex call, we have to donwload the file form the store and replace the hash with the path to the file.
