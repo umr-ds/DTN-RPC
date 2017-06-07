@@ -2,7 +2,7 @@
 This documentation provides all needed information to use RPCs via Serval.
 
 ## Building
-There is only one requirement, `libcurl`. On most systems this is already installed.
+There two requirements, `libcurl` and Serval. Whereas `libcurl` on most systems this is already installed, Serval has to be installed manually. For more information and installation instructions for Serval, see the Github page of the [Serval Project](https://github.com/servalproject/serval-dna).
 
 For building ServalRPC run the following commands in the ServalRPC folder:
 
@@ -14,7 +14,7 @@ make
 
 The first command will build a static library with all needed Serval parts. Therefore the Serval DNA will be downloaded and compiled. Then all required object files are packed to a static `.a` library. Finally everything will be cleaned up.
 
-If your Serval instance was compiled with a `--prefix`, both the prefix for `make-lib.sh` and for `configure` has to be the same!
+If your Serval instance was compiled with a `--prefix` or the `SERVAL_INSTANCE_PATH` is set, both the prefix for `make-lib.sh` and for `configure` has to be the same as the `--prefix` during the Serval compilation!
 
 ## Usage
 To use ServalRPC the Serval daemon has to run.
