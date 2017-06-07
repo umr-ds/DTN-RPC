@@ -1,6 +1,9 @@
 # ServalRPC
 This documentation provides all needed information to use RPCs via Serval.
 
+For more information and a detailed discussion about the design and the implementation for DTN-RPC, see our Paper:
+*Artur Sterz, Lars Baumgärtner, Ragnar Mogk, Mira Mezini and Bernd Freisleben*, **DTN-RPC: Remote Procedure Calls for Disruption-Tolerant Networking** in IFIP Networking 2017 Conference and Workshops (Networking’2017), Stockholm, Sweden
+
 ## Building
 There two requirements, `libcurl` and Serval. Whereas `libcurl` on most systems this is already installed, Serval has to be installed manually. For more information and installation instructions for Serval, see the Github page of the [Serval Project](https://github.com/servalproject/serval-dna).
 
