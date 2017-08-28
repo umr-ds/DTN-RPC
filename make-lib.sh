@@ -9,8 +9,7 @@ PREFIX=$1
 
 printf "\033[0m\033[32mCloning Serval DNA.\033[0m\n"
 git clone https://github.com/servalproject/serval-dna.git sdna
-printf "\033[0m\033[32mSwitching branch to \"batphone-release-0.93\"\033[0m\n"
-cd sdna && git checkout batphone-release-0.93
+cd sdna
 
 printf "\033[0m\033[32mRunning \"autoreconf\"\033[0m\n"
 autoreconf -i -f -I m4

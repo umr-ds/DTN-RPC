@@ -20,6 +20,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef __SERVAL_DNA___SOCKET_H
 #define __SERVAL_DNA___SOCKET_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef WIN32
 #   include "win32/win32.h"
 #else
@@ -32,7 +36,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #   endif
 #endif
 
-#include "features.h"
+#include "lang.h"
 #include "whence.h"
 
 struct socket_address{
@@ -57,6 +61,7 @@ int _socket_listen(struct __sourceloc, int sock, int backlog);
 int _socket_set_reuseaddr(struct __sourceloc, int sock, int reuseP);
 int _socket_set_rcvbufsize(struct __sourceloc, int sock, unsigned buffer_size);
 int socket_unlink_close(int sock);
+int socket_resolve_name(int family, const char *name, const char *service, struct socket_address *address);
 
 #define make_local_sockaddr(sockname, fmt,...) _make_local_sockaddr(__WHENCE__, (sockname), (fmt), ##__VA_ARGS__)
 #define esocket(domain, type, protocol)             _esocket(__WHENCE__, (domain), (type), (protocol))
@@ -68,6 +73,7 @@ int socket_unlink_close(int sock);
 
 int real_sockaddr(const struct socket_address *src_addr, struct socket_address *dst_addr);
 int cmp_sockaddr(const struct socket_address *addrA, const struct socket_address *addrB);
+int is_sockaddr_local(const struct socket_address *addr);
 
 // helper functions for manipulating fragmented packet data
 #define MAX_FRAGMENTS 8

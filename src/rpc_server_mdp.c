@@ -33,6 +33,7 @@ int _rpc_server_mdp_setup () {
 static int _rpc_server_mdp_handle (int mdp_sockfd) {
 	// Setup MDP header where meta data from incoming packet gets stored.
 	struct mdp_header header;
+	memset(&header, 0, sizeof(struct mdp_header));
 	uint8_t payload[RPC_PKT_SIZE];
 
 	// Receive payload.
@@ -43,7 +44,7 @@ static int _rpc_server_mdp_handle (int mdp_sockfd) {
 	}
 
 	// At this point the header is constucted so we can set our address for replies.
-	header.local.sid = my_subscriber->sid;
+	header.local.sid = get_my_subscriber(0)->sid;
 
 	// If the packet is a RPC call, handle it.
 	if (read_uint8(&payload[0]) == RPC_PKT_CALL) {

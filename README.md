@@ -2,7 +2,7 @@
 This documentation provides all needed information to use RPCs via Serval.
 
 ## Building
-There two requirements, `libcurl` and Serval. Whereas `libcurl` on most systems this is already installed, Serval has to be installed manually. For more information and installation instructions for Serval, see the Github page of the [Serval Project](https://github.com/servalproject/serval-dna).
+There are three requirements, `libcurl`, `libsodium` and Serval. You can install the libs with `sudo apt install libcurl4-openssl-dev` and `sudo apt install libsodium-dev` (on other distros and OSes you have to use the respective package manager or compile the libs yourself). Serval has to be installed manually. For more information and installation instructions for Serval, see the Github page of the [Serval Project](https://github.com/servalproject/serval-dna).
 
 For building ServalRPC run the following commands in the ServalRPC folder:
 

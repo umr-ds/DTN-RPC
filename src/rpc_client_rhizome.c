@@ -101,7 +101,7 @@ int _rpc_client_rhizome_listen (sid_t sid, char *rpc_name) {
 
             // Check, if this file is an RPC packet and if it is not from but for the client.
             int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
-            int not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
+            int not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(get_my_subscriber(0)->sid));
             int name_is_rpc = !strncmp(name, rpc_name, strlen(rpc_name));
             int not_to_old = time(NULL) - inserttime < 600000;
             // Parse the sender SID to sid_t
@@ -244,12 +244,12 @@ int rpc_client_call_rhizome (sid_t sid, char *rpc_name, int paramc, char **param
     if (is_sid_t_broadcast(sid) || is_sid_t_any(sid)) {
 		int manifest_size = strlen("service=RPC\nname=\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
 		char manifest_str[manifest_size];
-		sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid));
+		sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(get_my_subscriber(0)->sid));
 		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 	} else {
 		int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
 	    char manifest_str[manifest_size];
-	    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+	    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(get_my_subscriber(0)->sid), alloca_tohex_sid_t(sid));
 	    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 	}
 

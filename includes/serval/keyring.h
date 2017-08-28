@@ -1,6 +1,6 @@
 /* 
 Serval DNA keyring
-Copyright (C) 2013 Serval Project Inc.
+Copyright (C) 2013-2015 Serval Project Inc.
 Copyright (C) 2010-2012 Paul Gardner-Stephen
 
 This program is free software; you can redistribute it and/or
@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef __SERVAL_DNA__KEYRING_H
 #define __SERVAL_DNA__KEYRING_H
 
+#include "serval_types.h" // for sid_t
+#include "os.h" // for time_ms_t
+
 struct cli_parsed;
 #include "xprintf.h"
 
@@ -30,7 +33,6 @@ typedef struct keypair {
   size_t private_key_len;
   unsigned char *public_key;
   size_t public_key_len;
-  uint8_t verified;
   struct keypair *next;
 } keypair;
 
@@ -39,12 +41,19 @@ typedef struct keypair {
    (so that it can be replaced/rewritten as required). */
 #define PKR_SALT_BYTES 32
 #define PKR_MAC_BYTES 64
+struct keyring_challenge{
+  time_ms_t expires;
+  unsigned char challenge[24];
+};
+
 typedef struct keyring_identity {
   char *PKRPin;
   struct subscriber *subscriber;
-  time_ms_t challenge_expires;
-  unsigned char challenge[24];
   unsigned int slot;
+  struct keyring_challenge *challenge;
+  const uint8_t *box_sk;
+  const sid_t *box_pk;
+  const sign_keypair_t *sign_keypair;
   struct keyring_identity *next;
   keypair *keypairs;
 } keyring_identity;
@@ -53,6 +62,10 @@ typedef struct keyring_identity {
 #define KEYRING_BAM_BYTES ((size_t)2048)
 #define KEYRING_BAM_BITS (KEYRING_BAM_BYTES<<3)
 #define KEYRING_SLAB_SIZE (KEYRING_PAGE_SIZE*KEYRING_BAM_BITS)
+
+// should be a power of 2
+#define KEYRING_ALLOC_CHUNK (16)
+
 typedef struct keyring_bam {
   size_t file_offset;
   unsigned char bitmap[KEYRING_BAM_BYTES];
@@ -67,6 +80,7 @@ typedef struct keyring_file {
   keyring_identity *identities;
   FILE *file;
   size_t file_size;
+  uint8_t dirty;
 } keyring_file;
 
 typedef struct keyring_iterator{
@@ -79,12 +93,14 @@ void keyring_iterator_start(keyring_file *k, keyring_iterator *it);
 keyring_identity * keyring_next_identity(keyring_iterator *it);
 keypair * keyring_next_key(keyring_iterator *it);
 keypair * keyring_next_keytype(keyring_iterator *it, unsigned keytype);
-keypair *keyring_identity_keytype(keyring_identity *id, unsigned keytype);
+keypair *keyring_identity_keytype(const keyring_identity *id, unsigned keytype);
 keypair *keyring_find_did(keyring_iterator *it, const char *did);
-keypair *keyring_find_sid(keyring_iterator *it, const sid_t *sidp);
+keyring_identity *keyring_find_identity_sid(keyring_file *k, const sid_t *sidp);
+keyring_identity *keyring_find_identity(keyring_file *k, const identity_t *sign);
 
 void keyring_free(keyring_file *k);
-int keyring_release_identity(keyring_iterator *it);
+int keyring_release_identities_by_pin(keyring_file *f, const char *pin);
+int keyring_release_subscriber(keyring_file *k, const sid_t *sid);
 
 #define KEYTYPE_CRYPTOBOX 0x01 // must be lowest
 #define KEYTYPE_CRYPTOSIGN 0x02
@@ -96,7 +112,10 @@ int keyring_release_identity(keyring_iterator *it);
 /* Arbitrary name / value pairs */
 #define KEYTYPE_PUBLIC_TAG 0x05
 
-/* handle to keyring file for use in running instance */
+// Combined signing / encryption key data
+#define KEYTYPE_CRYPTOCOMBINED 0x06
+
+/* per-thread global handle to keyring file for use in running commands and server */
 extern __thread keyring_file *keyring;
 
 /* Public calls to keyring management */
@@ -105,17 +124,20 @@ keyring_file *keyring_open_instance(const char *pin);
 keyring_file *keyring_open_instance_cli(const struct cli_parsed *parsed);
 int keyring_enter_pin(keyring_file *k, const char *pin);
 int keyring_set_did(keyring_identity *id, const char *did, const char *name);
-struct keypair *keyring_find_sas_private(keyring_file *k, keyring_identity *identity);
-int keyring_send_sas_request(struct subscriber *subscriber);
+int keyring_set_pin(keyring_identity *id, const char *pin);
+int keyring_sign_message(struct keyring_identity *identity, unsigned char *content, size_t buffer_len, size_t *content_len);
+int keyring_send_identity_request(struct subscriber *subscriber);
 
 int keyring_commit(keyring_file *k);
+keyring_identity *keyring_inmemory_identity();
+void keyring_free_identity(keyring_identity *id);
 keyring_identity *keyring_create_identity(keyring_file *k, const char *pin);
-int keyring_seed(keyring_file *k);
-void keyring_identity_extract(const keyring_identity *id, const sid_t **sidp, const char **didp, const char **namep);
+void keyring_destroy_identity(keyring_file *k, keyring_identity *id);
+void keyring_identity_extract(const keyring_identity *id, const char **didp, const char **namep);
 int keyring_load_from_dump(keyring_file *k, unsigned entry_pinc, const char **entry_pinv, FILE *input);
 int keyring_dump(keyring_file *k, XPRINTF xpf, int include_secret);
 
-unsigned char *keyring_get_nm_bytes(const sid_t *known_sidp, const sid_t *unknown_sidp);
+unsigned char *keyring_get_nm_bytes(const uint8_t *box_sk, const sid_t *box_pk, const sid_t *unknown_sidp);
 
 struct internal_mdp_header;
 struct overlay_buffer;

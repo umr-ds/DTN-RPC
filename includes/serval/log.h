@@ -1,4 +1,6 @@
 /*
+Serval DNA logging
+Copyright (C) 2016 Flinders University
 Copyright (C) 2012-2015 Serval Project Inc.
  
 This program is free software; you can redistribute it and/or
@@ -52,7 +54,6 @@ extern int logLevel_NoLogFileConfigured;
 void close_log_file();
 void redirect_stderr_to_log();
 void logFlush();
-void logConfigChanged();
 
 // Logging context string.
 struct strbuf;
@@ -122,7 +123,7 @@ __SERVAL_LOG_INLINE int logErrorAndReturnNegativeOne(struct __sourceloc whence, 
 
 #define _DEBUGF_TAG(TAG,F,...)            _DEBUGF("{%s} " F, (TAG), ##__VA_ARGS__)
 #define _DEBUGF_TAG_perror(TAG,F,...)     _DEBUGF_perror("{%s} " F, (TAG), ##__VA_ARGS__)
-#define _DEBUGF_TAG_argv(TAG,X,ARGC,ARGV) _DEBUGF_argv("{" TAG "} " X, (ARGC), (ARGV))
+#define _DEBUG_TAG_argv(TAG,X,ARGC,ARGV)  _DEBUG_argv("{" TAG "} " X, (ARGC), (ARGV))
 
 #define dump(X,A,N)         logDump(LOG_LEVEL_DEBUG, __WHENCE__, (X), (const unsigned char *)(A), (size_t)(N))
 

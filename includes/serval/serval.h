@@ -1,6 +1,6 @@
-/* 
+/*
 Serval DNA header file
-Copyright (C) 2010-2012 Paul Gardner-Stephen 
+Copyright (C) 2010-2012 Paul Gardner-Stephen
 Copyright (C) 2012-2013 Serval Project Inc.
 
 This program is free software; you can redistribute it and/or
@@ -49,6 +49,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #ifndef __SERVAL_DNA__SERVAL_H
 #define __SERVAL_DNA__SERVAL_H
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <errno.h>
@@ -149,12 +153,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 /* Limit packet payloads to minimise packet loss of big packets in mesh networks */
 #define MAX_DATA_BYTES 256
 
-
-extern const char version_servald[];
-extern const char copyright_servald[];
-
-struct cli_parsed;
-
 int rhizome_enabled();
 int rhizome_http_server_running();
 
@@ -216,8 +214,6 @@ void logServalPacket(int level, struct __sourceloc __whence, const char *message
 
 int rhizome_opendb();
 
-int parseCommandLine(struct cli_context *context, const char *argv0, int argc, const char *const *argv);
-
 int allow_inbound_packet(const struct internal_mdp_header *header);
 int allow_outbound_packet(const struct internal_mdp_header *header);
 void load_mdp_packet_rules(const char *filename);
@@ -226,7 +222,7 @@ struct vomp_call_state;
 
 void set_codec_flag(int codec, unsigned char *flags);
 
-struct vomp_call_state *vomp_find_call_by_session(unsigned int session_token);
+struct vomp_call_state *vomp_find_call_by_session(uint16_t session_token);
 int vomp_parse_dtmf_digit(char c);
 int vomp_dial(struct subscriber *local, struct subscriber *remote, const char *local_did, const char *remote_did);
 int vomp_pickup(struct vomp_call_state *call);
@@ -243,9 +239,6 @@ int monitor_get_fds(struct pollfd *fds,int *fdcount,int fdmax);
 
 int monitor_setup_sockets();
 int monitor_get_fds(struct pollfd *fds,int *fdcount,int fdmax);
-int monitor_announce_peer(const sid_t *sidp);
-int monitor_announce_unreachable_peer(const sid_t *sidp);
-int monitor_announce_link(int hop_count, struct subscriber *transmitter, struct subscriber *receiver);
 int monitor_tell_clients(char *msg, int msglen, int mask);
 int monitor_tell_formatted(int mask, char *fmt, ...);
 int monitor_client_interested(int mask);

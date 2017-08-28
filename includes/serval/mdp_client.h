@@ -100,14 +100,10 @@ struct mdp_identity_request {
 #define MDP_INTERFACE_DOWN 1
 #define MDP_INTERFACE_RECV 2
 
-struct overlay_route_record{
-  sid_t sid;
-  char interface_name[256];
-  int reachable;
-  int hop_count;
-  sid_t neighbour;
-  sid_t prior_hop;
-};
+#define MDP_ROUTE_TABLE 5
+
+/* Tell the daemon to check for new manifests after adding a bundle from any other process */
+#define MDP_SYNC_RHIZOME 6
 
 struct overlay_mdp_scan{
   struct in_addr addr;
@@ -121,7 +117,6 @@ struct overlay_mdp_data_frame {
   int ttl;
   union{
     unsigned char payload[MDP_MTU-100];
-    struct overlay_route_record route_record;
   };
 };
 

@@ -6,7 +6,7 @@ sysconfdir=@sysconfdir@
 CC = @CC@
 
 # Set local libs, paths and curl here, everything else programmatically
-LDFLAGS = -L. -lservalrpc -lcurl @LDFLAGS@ @LIBS@
+LDFLAGS = -L. -lservalrpc -lcurl -lsodium @LDFLAGS@ @LIBS@
 
 # Set CFLAGS procramatically
 CFLAGS = @CFLAGS@

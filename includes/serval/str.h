@@ -1,6 +1,7 @@
 /*
  Serval string primitives
- Copyright (C) 2012 Serval Project Inc.
+ Copyright (C) 2012-2015 Serval Project Inc.
+ Copyright (C) 2016 Flinders University
  
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -20,10 +21,10 @@
 #ifndef __SERVAL_DNA__STR_H__
 #define __SERVAL_DNA__STR_H__
 
-#include <string.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <ctype.h>
+#include <string.h>    // for strcpy(), strlen() etc.
+#include <stdint.h>    // for uint8_t
+#include <sys/types.h> // for size_t
+#include <ctype.h>     // for isascii(), isxdigit() etc.
 #include <alloca.h>
 
 #ifndef __SERVAL_DNA__STR_INLINE
@@ -108,7 +109,8 @@ size_t fromhex(unsigned char *dstBinary, const char *srcHex, size_t nbinary);
  *
  * @author Andrew Bettison <andrew@servalproject.com>
  */
-int fromhexstr(unsigned char *dstBinary, const char *srcHex, size_t nbinary);
+int fromhexstr(unsigned char *dstBinary, size_t nbinary, const char *srcHex);
+int fromhexstrn(unsigned char *dstBinary, size_t nbinary, const char *srcHex, size_t nHex, const char **afterHex);
 
 /* Decode pairs of ASCII hex characters [0-9A-Fa-f] into binary data with an optional upper limit on
  * the number of binary bytes produced (destination buffer size).  Returns the number of binary
@@ -128,80 +130,6 @@ int fromhexstr(unsigned char *dstBinary, const char *srcHex, size_t nbinary);
  * @author Andrew Bettison <andrew@servalproject.com>
  */
 size_t strn_fromhex(unsigned char *dstBinary, ssize_t dstsiz, const char *src, const char **afterp);
-
-/* -------------------- Base64 encoding and decoding -------------------- */
-
-/* Return the number of bytes required to represent 'binaryBytes' bytes of binary data encoded
- * into Base64 form.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-#define BASE64_ENCODED_LEN(binaryBytes) (((size_t)(binaryBytes) + 2) / 3 * 4)
-
-/* Array of encoding symbols.  Entry [64] is the pad character (usually '=').
- */
-extern const char base64_symbols[65];
-extern const char base64url_symbols[65];
-
-/* Encode 'srcBytes' bytes of binary data at 'srcBinary' into Base64 representation at 'dstBase64'
- * (or Base64-URL representation at 'dstBase64url'), which must point to at least
- * 'BASE64_ENCODED_LEN(srcBytes)' bytes.  The encoding is terminated by a "=" or "==" pad to bring
- * the total number of encoded bytes up to a multiple of 4.
- *
- * Returns the total number of encoded bytes writtent at 'dstBase64'.
- *
- * The base64_encodev() is a multi-buffer gather variant, analagous to readv(2) and writev(2).
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-size_t base64_encode(char *dstBase64, const unsigned char *srcBinary, size_t srcBytes);
-size_t base64url_encode(char *dstBase64url, const unsigned char *srcBinary, size_t srcBytes);
-struct iovec;
-size_t base64_encode(char *dstBase64, const unsigned char *srcBinary, size_t srcBytes);
-size_t base64url_encodev(char *dstBase64url, const struct iovec *iov, int iovcnt);
-
-/* The same as base64_encode() but appends a terminating NUL character to the encoded string,
- * so 'dstBase64' must point to at least 'BASE64_ENCODED_LEN(srcBytes) + 1' bytes.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-char *to_base64_str(char *dstBase64, const unsigned char *srcBinary, size_t srcBytes);
-char *to_base64url_str(char *dstBase64url, const unsigned char *srcBinary, size_t srcBytes);
-
-#define alloca_base64(buf,len)  to_base64_str(alloca(BASE64_ENCODED_LEN(len) + 1), (buf), (len))
-#define alloca_base64url(buf,len)  to_base64url_str(alloca(BASE64_ENCODED_LEN(len) + 1), (buf), (len))
-
-/* Decode the string at 'srcBase64' as ASCII Base64 or Base64-URL (as per RFC-4648), writing up to
- * 'dstsiz' decoded binary bytes at 'dstBinary'.  Returns the number of decoded binary bytes
- * produced.  If 'dstsiz' is zero or 'dstBinary' is NULL, no binary bytes are produced and returns
- * zero.
- *
- * If the 'afterp' pointer is not NULL, then sets *afterp to point to the first character in
- * 'srcBase64' where decoding stopped for whatever reason.
- *
- * If 'srclen' is 0, then the string at 'stcBase64' is assumed to be NUL-terminated, and decoding
- * runs until the first non-Base64-digit is encountered.  If 'srclen' is nonzero, then decoding will
- * cease at the first non-Base64-digit or when 'srclen' bytes at 'srcBase64' have been decoded,
- * whichever comes first.
- *
- * If 'skip_pred' is not NULL, then all leading, internal and trailing characters C which are not a
- * valid Base64 digit or pad '=' will be skipped if skip_pred(C) returns true.  Otherwise, decoding
- * ends at C.
- *
- * If the B64_CONSUME_ALL flag is set, then once the 'dstsiz' limit is reached (or if 'dstBinary' is
- * NULL), the Base64 decoding process continues without actually writing decoded bytes, but instead
- * counts them and advances through the 'srcBase64' buffer as usual.  The return value is then the
- * number of binary bytes that would be decoded were all available Base64 decoded from 'srcBase64',
- * and *afterp points to the first character beyond the end of the decoded source characters.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-size_t base64_decode(unsigned char *dstBinary, size_t dstsiz, const char *const srcBase64, size_t srclen,
-                     const char **afterp, int flags, int (*skip_pred)(int));
-size_t base64url_decode(unsigned char *dstBinary, size_t dstsiz, const char *const srcBase64url, size_t srclen,
-                        const char **afterp, int flags, int (*skip_pred)(int));
-
-#define B64_CONSUME_ALL (1 << 0)
 
 /* -------------------- Character classes -------------------- */
 
@@ -275,6 +203,18 @@ __SERVAL_DNA__STR_INLINE int is_http_token(int c) {
   return is_http_char(c) && !is_http_ctl(c) && !is_http_separator(c);
 }
 
+__SERVAL_DNA__STR_INLINE int is_uri_char_scheme(int c) {
+  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_SCHEME) != 0;
+}
+
+__SERVAL_DNA__STR_INLINE int is_uri_char_unreserved(int c) {
+  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_UNRESERVED) != 0;
+}
+
+__SERVAL_DNA__STR_INLINE int is_uri_char_reserved(int c) {
+  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_RESERVED) != 0;
+}
+
 /* Convert the given ASCII hex digit character into its radix value, eg, '0' ->
  * 0, 'b' -> 11.  If the argument is not an ASCII hex digit, returns -1.
  *
@@ -295,9 +235,9 @@ char *toprint(char *dstStr, ssize_t dstBufSiz, const char *srcBuf, size_t srcByt
 char *toprint_str(char *dstStr, ssize_t dstBufSiz, const char *srcStr, const char quotes[2]);
 size_t toprint_len(const char *srcBuf, size_t srcBytes, const char quotes[2]);
 size_t toprint_str_len(const char *srcStr, const char quotes[2]);
-size_t strn_fromprint(unsigned char *dst, size_t dstsiz, const char *src, size_t srclen, char endquote, const char **afterp);
+size_t strn_fromprint(char *dst, size_t dstsiz, const char *src, size_t srclen, char endquote, const char **afterp);
 
-#define alloca_toprint_quoted(dstsiz,buf,len,quotes)  toprint((char *)alloca((dstsiz) == -1 ? toprint_len((const char *)(buf),(len), (quotes)) + 1 : (size_t)(dstsiz)), (size_t)(dstsiz), (const char *)(buf), (len), (quotes))
+#define alloca_toprint_quoted(dstsiz,buf,len,quotes)  toprint((char *)alloca((dstsiz) == -1 ? toprint_len((const char *)(buf),(len), (quotes)) + 1 : (size_t)(dstsiz)), (ssize_t)(dstsiz), (const char *)(buf), (len), (quotes))
 #define alloca_toprint(dstsiz,buf,len)  alloca_toprint_quoted(dstsiz,buf,len,"``")
 
 #define alloca_str_toprint_quoted(str, quotes)  toprint_str((char *)alloca(toprint_str_len((str), (quotes)) + 1), -1, (str), (quotes))
@@ -410,232 +350,6 @@ int strn_str_casecmp(const char *str1, size_t len1, const char *str2);
  * @author Andrew Bettison <andrew@servalproject.com>
  */
 char *str_str(char *haystack, const char *needle, size_t haystack_len);
-
-/* -------------------- Numeric strings -------------------- */
-
-/* Returns 1 if the given nul-terminated string parses successfully as an unsigned 64-bit integer.
- * Returns 0 if not.  This is simply a shortcut for str_to_uint32(str, 10, NULL, NULL), which is
- * convenient for when a pointer to a predicate function is needed.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_is_uint64_decimal(const char *str);
-
-/* Parse a NUL-terminated string as an integer in ASCII radix notation in the given 'base' (eg,
- * base=10 means decimal).
- *
- * Returns 1 if a valid integer is parsed, storing the value in *result (unless result is NULL) and
- * storing a pointer to the immediately succeeding character in *afterp.  If afterp is NULL then
- * returns 0 unless the immediately succeeding character is a NUL '\0'.  If no integer is parsed or
- * if the integer overflows (too many digits), then returns 0, leaving *result unchanged and setting
- * setting *afterp to point to the character where parsing failed.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_to_uint16(const char *str, unsigned base, uint16_t *result, const char **afterp);
-int str_to_int32(const char *str, unsigned base, int32_t *result, const char **afterp);
-int str_to_uint32(const char *str, unsigned base, uint32_t *result, const char **afterp);
-int str_to_int64(const char *str, unsigned base, int64_t *result, const char **afterp);
-int str_to_uint64(const char *str, unsigned base, uint64_t *result, const char **afterp);
-
-/* Parse a length-bound string as an integer in ASCII radix notation in the given 'base' (eg,
- * base=10 means decimal).
- *
- * Returns 1 if a valid integer is parsed, storing the value in *result (unless result is NULL) and
- * storing a pointer to the immediately succeeding character in *afterp.  If afterp is NULL then
- * returns 0 unless all 'strlen' characters of the string were consumed.  If no integer is parsed or
- * if the integer overflows (too many digits), then returns 0, leaving *result unchanged and setting
- * setting *afterp to point to the character where parsing failed.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int strn_to_uint16(const char *str, size_t strlen, unsigned base, uint16_t *result, const char **afterp);
-int strn_to_uint32(const char *str, size_t strlen, unsigned base, uint32_t *result, const char **afterp);
-int strn_to_uint64(const char *str, size_t strlen, unsigned base, uint64_t *result, const char **afterp);
-
-/* Parse a string as an integer in ASCII radix notation in the given 'base' (eg, base=10 means
- * decimal) and scale the result by a factor given by an optional suffix "scaling" character in the
- * set {kKmMgG}: 'k' = 1e3, 'K' = 1<<10, 'm' = 1e6, 'M' = 1<<20, 'g' = 1e9, 'G' = * 1<<30.
- *
- * Return 1 if a valid scaled integer was parsed, storing the value in *result (unless result is
- * NULL) and storing a pointer to the immediately succeeding character in *afterp (unless afterp is
- * NULL, in which case returns 1 only if the immediately succeeding character is a nul '\0').
- * Returns 0 otherwise, leaving *result and *afterp unchanged.
- *
- * NOTE: an argument base > 16 will cause any trailing 'g' or 'G' character to be parsed as part of
- * the integer, not as a scale suffix.  Ditto for base > 20 and 'k' 'K', and base > 22 and 'm' 'M'.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_to_int32_scaled(const char *str, unsigned base, int32_t *result, const char **afterp);
-int str_to_uint32_scaled(const char *str, unsigned base, uint32_t *result, const char **afterp);
-int str_to_int64_scaled(const char *str, unsigned base, int64_t *result, const char **afterp);
-int str_to_uint64_scaled(const char *str, unsigned base, uint64_t *result, const char **afterp);
-uint64_t scale_factor(const char *str, const char **afterp);
-
-/* Format a string as a decimal integer in ASCII radix notation with a scale suffix character in the
- * set {kKmMgG}: 'k' = 1e3, 'K' = 1<<10, 'm' = 1e6, 'M' = 1<<20, 'g' = 1e9, 'G' = * 1<<30 if the
- * value is an exact multiple.
- *
- * Return 1 if the supplied string buffer was large enough to hold the formatted result plus a
- * terminating nul character, 0 otherwise.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int uint32_scaled_to_str(char *str, size_t len, uint32_t value);
-int uint64_scaled_to_str(char *str, size_t len, uint64_t value);
-
-/* Parse a string as a time interval (seconds) in millisecond resolution.  Return the number of
- * milliseconds.  Valid strings are all unsigned ASCII decimal numbers with up to three digits after
- * the decimal point.
- *
- * Return 1 if a valid interval was parsed, storing the number of milliseconds in *result (unless
- * result is NULL) and storing a pointer to the immediately succeeding character in *afterp (unless
- * afterp is NULL, in which case returns 1 only if the immediately succeeding character is a nul
- * '\0').  Returns 0 otherwise, leaving *result and *afterp unchanged.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_to_uint64_interval_ms(const char *str, int64_t *result, const char **afterp);
-
-/* -------------------- URI encoding and decoding -------------------- */
-
-/* Encode up to 'srclen' bytes of byte data (or up to first nul if 'srclen' == -1) at 'src' into at
- * most 'dstsiz' bytes of URI-encoded (or www-form-urlencoded) representation at 'dstUrienc'.  If
- * 'dstsiz' is -1 or 'dstUrienc' is NULL, does not write any encoded bytes, but still counts them.
- * If 'afterp' is not NULL, then sets *afterp to point to the source byte immediately following the
- * last character encoded.  A "%xx" sequence will never be partially encoded; if all the "%xx" does
- * not fit within the destination buffer, then none of it is produced.
- *
- *
- * Returns the total number of encoded bytes written at 'dstUrienc'.
- *
- * Can be used to count encoded bytes without actually encoding, eg:
- *
- *    uri_encode(NULL, -1, buf, buflen, NULL);
- *
- * The uri_encodev() and www_form_uri_encodev() functions are a multi-buffer gather variants,
- * analagous to readv(2) and writev(2).  Modifies the supplied *iovp, *iovcntp parameters and the
- * iovec structures at (*iovp)[...] to represent the remaining source bytes not encoded.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-size_t uri_encode(char *const dstUrienc, ssize_t dstsiz, const char *src, size_t srclen, const char **afterp);
-size_t www_form_uri_encode(char *const dstUrienc, ssize_t dstsiz, const char *src, size_t srclen, const char **afterp);
-
-size_t uri_encodev(char *const dstUrienc, ssize_t dstsiz, struct iovec **iovp, int *iovcntp); // modifies *iovp, (*iovp)[...] and *iovcntp
-size_t www_form_uri_encodev(char *const dstUrienc, ssize_t dstsiz, struct iovec **iovp, int *iovcntp); // modifies *iovp, (*iovp)[...] and *iovcntp
-
-/* Decode up to 'srclen' bytes of URI-encoded (or www-form-urlencoded) data at 'srcUrienc' into at
- * most 'dstsiz' bytes at 'dst'.  If 'dstsiz' is -1 or 'dst' is NULL, then does not write any
- * decoded bytes, but still counts them.  If 'afterp' is not NULL, then sets *afterp to point to the
- * source byte immediately following the last byte decoded.
- *
- * Returns the total number of decoded bytes written at 'dst'.
- *
- * Can be used to decode in-place, eg:
- *
- *    uri_decode((char *)buf, n, (const unsigned char *)buf, n, NULL);
- *
- * Can be used to count decoded bytes without actually decoding, eg:
- *
- *    uri_decode(NULL, -1, buf, buflen, NULL);
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-size_t uri_decode(char *const dst, ssize_t dstsiz, const char *srcUrienc, size_t srclen, const char **afterp);
-size_t www_form_uri_decode(char *const dst, ssize_t dstsiz, const char *srcUrienc, size_t srclen, const char **afterp);
-
-/* -------------------- URI parsing -------------------- */
-
-/* Return true if the string resembles a nul-terminated URI.
- * Based on RFC-3986 generic syntax, assuming nothing about the hierarchical part.
- *
- * uri :=           scheme ":" hierarchical [ "?" query ] [ "#" fragment ]
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_is_uri(const char *uri);
-
-__SERVAL_DNA__STR_INLINE int is_uri_char_scheme(int c) {
-  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_SCHEME) != 0;
-}
-
-__SERVAL_DNA__STR_INLINE int is_uri_char_unreserved(int c) {
-  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_UNRESERVED) != 0;
-}
-
-__SERVAL_DNA__STR_INLINE int is_uri_char_reserved(int c) {
-  return (_serval_ctype_1[(uint8_t) c] & _SERVAL_CTYPE_1_URI_RESERVED) != 0;
-}
-
-/* Return true if the string resembles a URI scheme without the terminating colon.
- * Based on RFC-3986 generic syntax.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-__SERVAL_DNA__STR_INLINE int str_is_uri_scheme(const char *scheme)
-{
-  if (!isalpha(*scheme++))
-    return 0;
-  while (is_uri_char_scheme(*scheme))
-    ++scheme;
-  return *scheme == '\0';
-}
-
-/* Pick apart a URI into its basic parts.
- *
- * uri :=           scheme ":" hierarchical [ "?" query ] [ "#" fragment ]
- *
- * Based on RFC-3986 generic syntax, assuming nothing about the hierarchical
- * part.  If the respective part is found, sets (*partp) to point to the start
- * of the part within the supplied 'uri' string, sets (*lenp) to the length of
- * the part substring and returns 1.  Otherwise returns 0.  These functions
- * do not reliably validate that the string in 'uri' is a valid URI; that must
- * be done by calling str_is_uri().
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_uri_scheme(const char *uri, const char **partp, size_t *lenp);
-int str_uri_hierarchical(const char *uri, const char **partp, size_t *lenp);
-int str_uri_query(const char *uri, const char **partp, size_t *lenp);
-int str_uri_fragment(const char *uri, const char **partp, size_t *lenp);
-
-/* Pick apart a URI hierarchical part into its basic parts.
- *
- * hierarchical :=  "//" authority [ "/" path ]
- *
- * If the respective part is found, sets (*partp) to point to the start of the
- * part within the supplied 'uri' string, sets (*lenp) to the length of the
- * part substring and returns 1.  Otherwise returns 0.
- *
- * These functions may be called directly on the part returned by
- * str_uri_hierarchical(), even though it is not nul-terminated, because they
- * treat "?" and "#" as equally valid terminators.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_uri_hierarchical_authority(const char *hier, const char **partp, size_t *lenp);
-int str_uri_hierarchical_path(const char *hier, const char **partp, size_t *lenp);
-
-/* Pick apart a URI authority into its basic parts.
- *
- * authority :=     [ username ":" password "@" ] hostname [ ":" port ]
- *
- * If the respective part is found, sets (*partp) to point to the start of the
- * part within the supplied 'uri' string, sets (*lenp) to the length of the
- * part substring and returns 1.  Otherwise returns 0.
- *
- * These functions may be called directly on the part returned by
- * str_uri_hierarchical_authority(), even though it is not nul-terminated,
- * because they treat "/", "?" and "#" as equally valid terminators.
- *
- * @author Andrew Bettison <andrew@servalproject.com>
- */
-int str_uri_authority_username(const char *auth, const char **partp, size_t *lenp);
-int str_uri_authority_password(const char *auth, const char **partp, size_t *lenp);
-int str_uri_authority_hostname(const char *auth, const char **partp, size_t *lenp);
-int str_uri_authority_port(const char *auth, uint16_t *portp);
 
 /* -------------------- Command-line strings -------------------- */
 

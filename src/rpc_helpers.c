@@ -53,12 +53,12 @@ int _rpc_add_file_to_store (char *filehash, sid_t sid, char *rpc_name, char *fil
 	if (is_sid_t_broadcast(sid)) {
 		int manifest_size = strlen("service=RPC\nname=f_\nsender=\n") + strlen(rpc_name) + strlen(alloca_tohex_sid_t(sid));
 		char manifest_str[manifest_size];
-		sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid));
+		sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\n", rpc_name, alloca_tohex_sid_t(get_my_subscriber(0)->sid));
 		_rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 	} else {
 		int manifest_size = strlen("service=RPC\nnamef_=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
 	    char manifest_str[manifest_size];
-	    sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+	    sprintf(manifest_str, "service=RPC\nname=f_%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(get_my_subscriber(0)->sid), alloca_tohex_sid_t(sid));
 	    _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 	}
 
@@ -123,38 +123,89 @@ int _rpc_sid_is_reachable (sid_t sid) {
 		return -1;
 	}
 
-	// Init a mdp_frame
-	overlay_mdp_frame mdp;
-	bzero(&mdp,sizeof(mdp));
+	// // Init a mdp_frame
+	// overlay_mdp_frame mdp;
+	// bzero(&mdp,sizeof(mdp));
 
-	// Set the packettype to get a routingtable.
-	mdp.packetTypeAndFlags = MDP_ROUTING_TABLE;
-	overlay_mdp_send(mdp_sockfd, &mdp, 0, 0);
+	// // Set the packettype to get a routingtable.
+	// mdp.packetTypeAndFlags = MDP_ROUTING_TABLE;
+	// overlay_mdp_send(mdp_sockfd, &mdp, 0, 0);
 
-	// Poll until there is nothing left.
-	while (overlay_mdp_client_poll(mdp_sockfd, 200)) {
-		// Create mdp_frame for incoming data. TTL is required but not needed...
-		overlay_mdp_frame recv_frame;
-		int ttl;
-		if (overlay_mdp_recv(mdp_sockfd, &recv_frame, 0, &ttl)) {
-      		continue;
-  		}
 
-		// Handle incoming data.
-		int offset=0;
-		while (offset + sizeof(struct overlay_route_record) <= recv_frame.out.payload_length) {
-			// Make new route record struct where all needed information is stored in.
-			struct overlay_route_record *record = &recv_frame.out.route_record;
-			offset += sizeof(struct overlay_route_record);
+	struct mdp_header mdp_header;
+	bzero(&mdp_header, sizeof mdp_header);
+  
+	mdp_header.local.sid = SID_INTERNAL;
+	mdp_header.local.port = MDP_ROUTE_TABLE;
+	mdp_header.remote.sid = SID_ANY;
+	mdp_header.remote.port = MDP_ROUTE_TABLE;
 
-			// If the record (aka SID) is reachable, and the record is the desired SID, return 1 and clean up.
-			if ((record->reachable == REACHABLE_INDIRECT || record->reachable == REACHABLE_UNICAST || record->reachable == REACHABLE_BROADCAST || record->reachable == REACHABLE_SELF)
-					&& !cmp_sid_t(&record->sid, &sid)) {
-				mdp_close(mdp_sockfd);
-				return 1;
+	mdp_send(mdp_sockfd, &mdp_header, NULL, 0);
+
+	uint8_t payload[MDP_MTU];
+	struct overlay_buffer *buff = ob_static(payload, sizeof payload);
+
+	ssize_t recv_len;
+	while( (recv_len = mdp_poll_recv(mdp_sockfd, gettime_ms()+1000, &mdp_header, payload, sizeof payload) )){
+		if (recv_len == -1)
+			break;
+			
+		if (recv_len > 0){
+			ob_clear(buff);
+			ob_limitsize(buff, recv_len);
+			
+			while(ob_remaining(buff)>0){
+				sid_t *local_sid = (sid_t *)ob_get_bytes_ptr(buff, SID_SIZE);
+				if (!local_sid)
+					break;
+					
+				// ignore signing key details for now
+				int id_flags = ob_get(buff);
+				if (id_flags < 0)
+					break;
+					
+				if (id_flags & 1)
+					ob_skip(buff, IDENTITY_SIZE);
+					
+				if (ob_overrun(buff))
+					break;
+					
+				int reachable = ob_get(buff);
+				if (reachable<0)
+					break;
+					
+				if ((reachable == REACHABLE_INDIRECT || reachable == REACHABLE_UNICAST || reachable == REACHABLE_BROADCAST || reachable == REACHABLE_SELF) && !cmp_sid_t(local_sid, &sid)) {
+					mdp_close(mdp_sockfd);
+					return 1;
+				}
 			}
 		}
 	}
+
+	// // Poll until there is nothing left.
+	// while (overlay_mdp_client_poll(mdp_sockfd, 200)) {
+	// 	// Create mdp_frame for incoming data. TTL is required but not needed...
+	// 	overlay_mdp_frame recv_frame;
+	// 	int ttl;
+	// 	if (overlay_mdp_recv(mdp_sockfd, &recv_frame, 0, &ttl)) {
+    //   		continue;
+  	// 	}
+
+	// 	// Handle incoming data.
+	// 	int offset=0;
+	// 	while (offset + sizeof(struct overlay_route_record) <= recv_frame.out.payload_length) {
+	// 		// Make new route record struct where all needed information is stored in.
+	// 		struct overlay_route_record *record = &recv_frame.out.route_record;
+	// 		offset += sizeof(struct overlay_route_record);
+
+	// 		// If the record (aka SID) is reachable, and the record is the desired SID, return 1 and clean up.
+	// 		if ((record->reachable == REACHABLE_INDIRECT || record->reachable == REACHABLE_UNICAST || record->reachable == REACHABLE_BROADCAST || record->reachable == REACHABLE_SELF)
+	// 				&& !cmp_sid_t(&record->sid, &sid)) {
+	// 			mdp_close(mdp_sockfd);
+	// 			return 1;
+	// 		}
+	// 	}
+	// }
   mdp_close(mdp_sockfd);
   return 0;
 }
@@ -233,7 +284,7 @@ int _rpc_download_file (char *fpath, char *rpc_name, char *sid) {
             int right_client = sender && (!strncmp(alloca_tohex_sid_t(SID_BROADCAST), sid, strlen(sid)) || !strncmp(sender, sid, strlen(sid)));
 			int not_my_file = 0;
 			if (recipient) {
-	        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
+	        	not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(get_my_subscriber(0)->sid));
 			} else {
 				not_my_file = 1;
 			}

@@ -33,7 +33,7 @@ int _rpc_server_rhizome_send_result (sid_t sid, char *rpc_name, uint8_t *payload
     // Construct the manifest and write it to the manifest file.
     int manifest_size = strlen("service=RPC\nname=\nsender=\nrecipient=\n") + strlen(rpc_name) + (strlen(alloca_tohex_sid_t(sid)) * 2);
     char manifest_str[manifest_size];
-    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(my_subscriber->sid), alloca_tohex_sid_t(sid));
+    sprintf(manifest_str, "service=RPC\nname=%s\nsender=%s\nrecipient=%s\n", rpc_name, alloca_tohex_sid_t(get_my_subscriber(0)->sid), alloca_tohex_sid_t(sid));
     char tmp_manifest_file_name[] = "/tmp/mf_XXXXXX";
     _rpc_write_tmp_file(tmp_manifest_file_name, manifest_str, strlen(manifest_str));
 
@@ -159,7 +159,7 @@ int _rpc_server_rhizome_process () {
             int service_is_rpc = !strncmp(service, "RPC", strlen("RPC"));
             int not_my_file = 0;
             if (recipient) {
-                not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(my_subscriber->sid));
+                not_my_file = recipient != NULL && !strcmp(recipient, alloca_tohex_sid_t(get_my_subscriber(0)->sid));
             } else {
                 not_my_file = 1;
             }

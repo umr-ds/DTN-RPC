@@ -233,6 +233,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "rhizome_types.h"
 #include "strbuf.h"
 #include "httpd.h"
+#include "trigger.h"
 
 #define CONFIG_FILE_MAX_SIZE        (32 * 1024)
 #define INTERFACE_NAME_STRLEN       40
@@ -699,10 +700,19 @@ int cf_fmt_socket_type(const char **, const short *typep);
 int cf_opt_encapsulation(short *encapp, const char *text);
 int cf_fmt_encapsulation(const char **, const short *encapp);
 
-extern int cf_limbo;
+extern __thread int cf_initialised;
+extern __thread int cf_limbo;
 extern __thread struct config_main config;
 
+// This macro is used in an if (IF_DEBUG(flagname)) { } statement around all
+// debugging log statements.  If macro SERVAL_ENABLE_DEBUG can be pre-defined as 0
+// (eg, using the -D command-line option) to build without any debug
+// statements.
+#if SERVAL_ENABLE_DEBUG+0
 #define IF_DEBUG(flagname) (config.debug.flagname)
+#else
+#define IF_DEBUG(flagname) (0)
+#endif
 
 int cf_init(void);
 int cf_load(void);
@@ -712,6 +722,7 @@ int cf_reload(void);
 int cf_reload_strict(void);
 int cf_reload_permissive(void);
 
-void cf_on_config_change(void);
+DECLARE_TRIGGER(conf_log);
+DECLARE_TRIGGER(conf_change);
 
 #endif //__SERVAL_DNA__CONF_H

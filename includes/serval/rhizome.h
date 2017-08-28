@@ -29,8 +29,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "fdqueue.h"
 #include "os.h"
 #include "uuid.h"
-#include "str.h"
-#include "strbuf.h"
 #include "trigger.h"
 
 #ifndef __RHIZOME_INLINE
@@ -48,12 +46,6 @@ extern time_ms_t rhizome_voice_timeout;
 
 #define RHIZOME_IDLE_TIMEOUT 20000
 
-typedef struct rhizome_signature {
-  unsigned char signature[crypto_sign_edwards25519sha512batch_BYTES
-			  +crypto_sign_edwards25519sha512batch_PUBLICKEYBYTES+1];
-  size_t signatureLength;
-} rhizome_signature;
-
 #define RHIZOME_BAR_COMPARE_BYTES 31
 #define RHIZOME_BAR_TTL_OFFSET 31
 
@@ -63,15 +55,13 @@ typedef struct rhizome_signature {
 
 typedef struct rhizome_manifest
 {
-  int manifest_record_number;
 
   /* CryptoSign key pair for this manifest.  The public key is the Bundle ID
    * (aka Manifest ID).
    */
-  rhizome_bid_t cryptoSignPublic;
-  unsigned char cryptoSignSecret[crypto_sign_edwards25519sha512batch_SECRETKEYBYTES];
+  sign_keypair_t keypair;
 
-  /* Whether cryptoSignSecret is correct (ie, bundle secret is known)
+  /* What do we know about keypair.private_key? (ie, bundle secret is known)
    */
   enum { SECRET_UNKNOWN = 0, EXISTING_BUNDLE_ID, NEW_BUNDLE_ID } haveSecret;
 
@@ -124,44 +114,40 @@ typedef struct rhizome_manifest
    * appended.  All fields below may not be valid until the manifest has been
    * finalised.
    */
-  bool_t finalised;
+  bool_t finalised:1;
 
   /* Whether the manifest contains a signature that corresponds to the manifest
    * id (ie public key).
    */
-  bool_t selfSigned;
+  bool_t selfSigned:1;
 
-  /* If set, unlink(2) the associated file when freeing the manifest.
+  /* Set if the ID field (sign_key.public_key) contains a bundle ID.
    */
-  bool_t dataFileUnlinkOnFree;
-
-  /* Set if the ID field (cryptoSignPublic) contains a bundle ID.
-   */
-  bool_t has_id;
+  bool_t has_id:1;
 
   /* Set if the filehash field contains a file hash.
    */
-  bool_t has_filehash;
+  bool_t has_filehash:1;
 
   /* Set if the tail field is valid, ie, the bundle is a journal.
    */
-  bool_t is_journal;
+  bool_t is_journal:1;
 
   /* Set if the date field is valid, ie, the manifest contains a valid "date"
    * field.
    */
-  bool_t has_date;
+  bool_t has_date:1;
 
   /* Set if the bundle_key field is valid, ie, the manifest contains a valid
    * "BK" field.
    */
-  bool_t has_bundle_key;
+  bool_t has_bundle_key:1;
 
   /* Set if the sender and recipient fields are valid, ie, the manifest
    * contains a valid "sender"/"recipient" field.
    */
-  bool_t has_sender;
-  bool_t has_recipient;
+  bool_t has_sender:1;
+  bool_t has_recipient:1;
 
   /* Local authorship.  Useful for dividing bundle lists between "sent" and
    * "inbox" views.
@@ -173,11 +159,9 @@ typedef struct rhizome_manifest
     AUTHOR_UNKNOWN, // author is not a local identity
     AUTHOR_LOCAL, // author is in keyring (unlocked) but not verified
     AUTHOR_IMPOSTOR, // author is a local identity but fails verification
-    AUTHOR_AUTHENTIC // a local identity is the verified author
+    AUTHOR_AUTHENTIC, // a local identity is the verified author
+    AUTHOR_REMOTE // the author of this bundle has signed it, but isn't in our keyring
   } authorship;
-
-  /* Absolute path of the file associated with the manifest */
-  const char *dataFileName;
 
   /* Whether the paylaod is encrypted or not */
   enum rhizome_manifest_crypt {
@@ -186,7 +170,7 @@ typedef struct rhizome_manifest
         PAYLOAD_ENCRYPTED
     } payloadEncryption;
   unsigned char payloadKey[RHIZOME_CRYPT_KEY_BYTES];
-  unsigned char payloadNonce[crypto_stream_xsalsa20_NONCEBYTES];
+  unsigned char payloadNonce[crypto_box_NONCEBYTES];
 
   /* From the "date" field, if present.  The number of milliseconds since 1970
    * when the bundle was last modified.
@@ -228,11 +212,7 @@ typedef struct rhizome_manifest
    * have an ANY author (all zeros).
    */
   sid_t author;
-
-  /* Unused.  SHOULD BE DELETED.
-   */
-  unsigned group_count;
-  char *groups[MAX_MANIFEST_VARS];
+  const struct keyring_identity *author_identity;
 
   size_t manifest_body_bytes;
   size_t manifest_all_bytes;
@@ -273,7 +253,8 @@ typedef struct rhizome_manifest
 #define rhizome_manifest_set_crypt(m,v)         _rhizome_manifest_set_crypt(__WHENCE__,(m),(v))
 #define rhizome_manifest_set_rowid(m,v)         _rhizome_manifest_set_rowid(__WHENCE__,(m),(v))
 #define rhizome_manifest_set_inserttime(m,v)    _rhizome_manifest_set_inserttime(__WHENCE__,(m),(v))
-#define rhizome_manifest_set_author(m,v)        _rhizome_manifest_set_author(__WHENCE__,(m),(v))
+#define rhizome_manifest_set_author(m,v)        _rhizome_manifest_set_author(__WHENCE__,(m),NULL,(v))
+#define rhizome_manifest_set_author_identity(m,v) _rhizome_manifest_set_author(__WHENCE__,(m),(v),NULL)
 #define rhizome_manifest_del_author(m)          _rhizome_manifest_del_author(__WHENCE__,(m))
 
 void _rhizome_manifest_set_id(struct __sourceloc, rhizome_manifest *, const rhizome_bid_t *);
@@ -299,7 +280,7 @@ void _rhizome_manifest_del_recipient(struct __sourceloc, rhizome_manifest *);
 void _rhizome_manifest_set_crypt(struct __sourceloc, rhizome_manifest *, enum rhizome_manifest_crypt);
 void _rhizome_manifest_set_rowid(struct __sourceloc, rhizome_manifest *, uint64_t);
 void _rhizome_manifest_set_inserttime(struct __sourceloc, rhizome_manifest *, time_ms_t);
-void _rhizome_manifest_set_author(struct __sourceloc, rhizome_manifest *, const sid_t *);
+void _rhizome_manifest_set_author(struct __sourceloc, rhizome_manifest *, const struct keyring_identity *, const sid_t *);
 void _rhizome_manifest_del_author(struct __sourceloc, rhizome_manifest *);
 
 #define rhizome_manifest_overwrite(dstm,srcm)   _rhizome_manifest_overwrite(__WHENCE__,(dstm),(srcm))
@@ -346,6 +327,8 @@ int rhizome_manifest_remove_field(rhizome_manifest *, const char *field_label, s
 #define     RHIZOME_SERVICE_FILE    "file"
 #define     RHIZOME_SERVICE_MESHMS  "MeshMS1"
 #define     RHIZOME_SERVICE_MESHMS2  "MeshMS2"
+#define     RHIZOME_SERVICE_MESHMB  "MeshMB1"
+#define     RHIZOME_SERVICE_PRIVATE    "private"
 
 extern int64_t rhizome_space;
 
@@ -355,9 +338,10 @@ int rhizome_enabled();
 int rhizome_fetch_delay_ms();
 
 #define RHIZOME_BLOB_SUBDIR "blob"
+#define RHIZOME_HASH_SUBDIR "hash"
 
 extern __thread sqlite3 *rhizome_db;
-serval_uuid_t rhizome_db_uuid;
+extern serval_uuid_t rhizome_db_uuid;
 
 int rhizome_opendb();
 int rhizome_close_db();
@@ -388,8 +372,7 @@ int rhizome_cleanup(struct rhizome_cleanup_report *report);
 int rhizome_store_cleanup(struct rhizome_cleanup_report *report);
 void rhizome_vacuum_db(sqlite_retry_state *retry);
 int rhizome_manifest_createid(rhizome_manifest *m);
-int rhizome_get_bundle_from_seed(rhizome_manifest *m, const char *seed);
-int rhizome_get_bundle_from_secret(rhizome_manifest *m, const rhizome_bk_t *bsk);
+struct rhizome_bundle_result rhizome_private_bundle(rhizome_manifest *m, const sign_keypair_t *keypair);
 void rhizome_new_bundle_from_secret(rhizome_manifest *m, const rhizome_bk_t *bsk);
 
 struct rhizome_manifest_summary {
@@ -428,10 +411,10 @@ const char *rhizome_bundle_status_message_nonnull(enum rhizome_bundle_status);
 struct rhizome_bundle_result {
     enum rhizome_bundle_status status;
     const char *message;
-    void (*free)(void *); // call r.free(r.message) before destroying r
+    void (*release)(void *); // call r.release(r.message) before destroying r
 };
 
-#define INVALID_RHIZOME_BUNDLE_RESULT ((struct rhizome_bundle_result){ .status = INVALID_RHIZOME_BUNDLE_STATUS, .message = NULL, .free = NULL })
+#define INVALID_RHIZOME_BUNDLE_RESULT ((struct rhizome_bundle_result){ .status = INVALID_RHIZOME_BUNDLE_STATUS, .message = NULL, .release = NULL })
 
 // Call this before discarding a struct rhizome_bundle_result.
 void rhizome_bundle_result_free(struct rhizome_bundle_result *);
@@ -466,6 +449,7 @@ enum rhizome_payload_status {
     RHIZOME_PAYLOAD_STATUS_CRYPTO_FAIL = 5, // cannot encrypt/decrypt (payload key unknown)
     RHIZOME_PAYLOAD_STATUS_TOO_BIG = 6, // payload will never fit in our store
     RHIZOME_PAYLOAD_STATUS_EVICTED = 7, // other payloads in our store are more important
+    RHIZOME_PAYLOAD_STATUS_BUSY = 8, // storage is currently busy, you may try again at a later time
 };
 
 // Useful for initialising a variable then checking later that it was set to a
@@ -482,15 +466,17 @@ const char *rhizome_manifest_validate_reason(rhizome_manifest *m);
 int rhizome_manifest_parse(rhizome_manifest *m);
 int rhizome_manifest_verify(rhizome_manifest *m);
 
-int rhizome_hash_file(rhizome_manifest *m, const char *path, rhizome_filehash_t *hash_out, uint64_t *size_out);
-
 void _rhizome_manifest_free(struct __sourceloc, rhizome_manifest *m);
 #define rhizome_manifest_free(m) _rhizome_manifest_free(__WHENCE__,m)
 rhizome_manifest *_rhizome_new_manifest(struct __sourceloc);
 #define rhizome_new_manifest() _rhizome_new_manifest(__WHENCE__)
 
-int rhizome_store_manifest(rhizome_manifest *m);
 int rhizome_store_file(rhizome_manifest *m,const unsigned char *key);
+
+int rhizome_add_field_assignment(struct rhizome_manifest_field_assignment *field, const char *arg, size_t arglen);
+int rhizome_parse_field_assignments(struct rhizome_manifest_field_assignment *fields, unsigned argc, const char *const *args);
+struct rhizome_bundle_result rhizome_apply_assignments(rhizome_manifest *m,
+  unsigned nassignments, const struct rhizome_manifest_field_assignment *assignments);
 
 struct rhizome_bundle_result rhizome_manifest_add_file(int appending,
                                                        rhizome_manifest *m,
@@ -504,12 +490,11 @@ struct rhizome_bundle_result rhizome_manifest_add_file(int appending,
 int rhizome_bundle_import_files(rhizome_manifest *m, rhizome_manifest **m_out, const char *manifest_path, const char *filepath, int zip_files);
 
 int rhizome_manifest_set_name_from_path(rhizome_manifest *m, const char *filepath);
-struct rhizome_bundle_result rhizome_fill_manifest(rhizome_manifest *m, const char *filepath, const sid_t *authorSidp);
+struct rhizome_bundle_result rhizome_fill_manifest(rhizome_manifest *m, const char *filepath);
 
 int rhizome_apply_bundle_secret(rhizome_manifest *, const rhizome_bk_t *);
 int rhizome_manifest_add_bundle_key(rhizome_manifest *);
 
-void rhizome_find_bundle_author_and_secret(rhizome_manifest *m);
 int rhizome_lookup_author(rhizome_manifest *m);
 void rhizome_authenticate_author(rhizome_manifest *m);
 
@@ -519,7 +504,6 @@ enum rhizome_bundle_status rhizome_add_manifest_to_store(rhizome_manifest *m_in,
 
 void rhizome_bytes_to_hex_upper(unsigned const char *in, char *out, int byteCount);
 int rhizome_find_privatekey(rhizome_manifest *m);
-int rhizome_sign_hash(rhizome_manifest *m, rhizome_signature *out);
 
 __RHIZOME_INLINE int sqlite_code_ok(int code)
 {
@@ -536,7 +520,6 @@ int is_debug_rhizome();
 int is_debug_rhizome_ads();
 
 enum sqlbind_type {
-  END = 0xbabecafe,
   INT = 1,	      // int value
   INT_TOSTR,	      // int value
   UINT_TOSTR,	      // unsigned value
@@ -557,9 +540,10 @@ enum sqlbind_type {
   TEXT_TOUPPER,       // const char *text,
   TEXT_LEN_TOUPPER,   // const char *text, unsigned bytes
   SERVAL_UUID_T,      // const serval_uuid_t *uuidp
-  NUL = 1 << 15,      // NUL (no arg) ; NUL|INT, ...
-  INDEX = 0xfade0000, // INDEX|INT, int index, ...
-  NAMED = 0xdead0000  // NAMED|INT, const char *label, ...
+  NUL = 1 << 8,      // NUL (no arg) ; NUL|INT, ...
+  INDEX = 1 << 9, // INDEX|INT, int index, ...
+  NAMED = 1 << 10,  // NAMED|INT, const char *label, ...
+  END = 1 << 11,
 };
 
 sqlite3_stmt *_sqlite_prepare(struct __sourceloc, int log_level, sqlite_retry_state *retry, const char *sqltext);
@@ -569,10 +553,11 @@ sqlite3_stmt *_sqlite_prepare_bind(struct __sourceloc, int log_level, sqlite_ret
 int _sqlite_retry(struct __sourceloc, sqlite_retry_state *retry, const char *action);
 void _sqlite_retry_done(struct __sourceloc, sqlite_retry_state *retry, const char *action);
 int _sqlite_step(struct __sourceloc, int log_level, sqlite_retry_state *retry, sqlite3_stmt *statement);
+int _sqlite_exec_code(struct __sourceloc __whence, int log_level, sqlite_retry_state *retry, sqlite3_stmt *statement, int *rowcount);
 int _sqlite_exec(struct __sourceloc __whence, int log_level, sqlite_retry_state *retry, sqlite3_stmt *statement);
 int _sqlite_exec_void(struct __sourceloc, int log_level, const char *sqltext, ...);
 int _sqlite_exec_void_retry(struct __sourceloc, int log_level, sqlite_retry_state *retry, const char *sqltext, ...);
-int _sqlite_exec_uint64(struct __sourceloc, uint64_t *result, const char *sqltext, ...);
+int _sqlite_exec_changes_retry(struct __sourceloc __whence, int log_level, sqlite_retry_state *retry, int *rowcount, int *changes, const char *sqltext, ...);
 int _sqlite_exec_uint64_retry(struct __sourceloc, sqlite_retry_state *retry, uint64_t *result, const char *sqltext, ...);
 int _sqlite_exec_strbuf(struct __sourceloc, strbuf sb, const char *sqltext, ...);
 int _sqlite_exec_strbuf_retry(struct __sourceloc, sqlite_retry_state *retry, strbuf sb, const char *sqltext, ...);
@@ -614,13 +599,16 @@ int _sqlite_blob_close(struct __sourceloc, int log_level, sqlite3_blob *blob);
 #define sqlite_exec(stmt)                               _sqlite_exec(__WHENCE__, LOG_LEVEL_ERROR, NULL, (stmt))
 #define sqlite_exec_retry(rs,stmt)                      _sqlite_exec(__WHENCE__, LOG_LEVEL_ERROR, (rs), (stmt))
 #define sqlite_exec_retry_loglevel(ll,rs,stmt)          _sqlite_exec(__WHENCE__, (ll), (rs), (stmt))
+#define sqlite_exec_code(stmt, rowcount)                _sqlite_exec_code(__WHENCE__, LOG_LEVEL_ERROR, NULL, (stmt), (rowcount))
+#define sqlite_exec_code_retry(rs, stmt, rowcount)      _sqlite_exec_code(__WHENCE__, LOG_LEVEL_ERROR, (rs), (stmt), (rowcount))
 #define sqlite_step(stmt)                               _sqlite_step(__WHENCE__, LOG_LEVEL_ERROR, NULL, (stmt))
 #define sqlite_step_retry(rs,stmt)                      _sqlite_step(__WHENCE__, LOG_LEVEL_ERROR, (rs), (stmt))
 #define sqlite_exec_void(sql,arg,...)                   _sqlite_exec_void(__WHENCE__, LOG_LEVEL_ERROR, (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_void_loglevel(ll,sql,arg,...)       _sqlite_exec_void(__WHENCE__, (ll), (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_void_retry(rs,sql,arg,...)          _sqlite_exec_void_retry(__WHENCE__, LOG_LEVEL_ERROR, (rs), (sql), arg, ##__VA_ARGS__)
+#define sqlite_exec_changes_retry(rs,ROWS,CHANGES,sql,arg,...) _sqlite_exec_changes_retry(__WHENCE__, LOG_LEVEL_ERROR, (rs), (ROWS), (CHANGES), (sql), arg, ##__VA_ARGS__)
+#define sqlite_exec_changes_retry_loglevel(ll,rs,ROWS,CHANGES,sql,arg,...) _sqlite_exec_changes_retry(__WHENCE__, (ll), (rs), (ROWS), (CHANGES), (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_void_retry_loglevel(ll,rs,sql,arg,...) _sqlite_exec_void_retry(__WHENCE__, (ll), (rs), (sql), arg, ##__VA_ARGS__)
-#define sqlite_exec_uint64(res,sql,arg,...)             _sqlite_exec_uint64(__WHENCE__, (res), (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_uint64_retry(rs,res,sql,arg,...)    _sqlite_exec_uint64_retry(__WHENCE__, (rs), (res), (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_strbuf(sb,sql,arg,...)              _sqlite_exec_strbuf(__WHENCE__, (sb), (sql), arg, ##__VA_ARGS__)
 #define sqlite_exec_strbuf_retry(rs,sb,sql,arg,...)     _sqlite_exec_strbuf_retry(__WHENCE__, (rs), (sb), (sql), arg, ##__VA_ARGS__)
@@ -633,10 +621,13 @@ double rhizome_manifest_get_double(rhizome_manifest *m,char *var,double default_
 int rhizome_manifest_extract_signature(rhizome_manifest *m, unsigned *ofs);
 enum rhizome_bundle_status rhizome_find_duplicate(const rhizome_manifest *m, rhizome_manifest **found);
 int rhizome_manifest_to_bar(rhizome_manifest *m, rhizome_bar_t *bar);
-int rhizome_is_bar_interesting(const rhizome_bar_t *bar);
-int rhizome_is_manifest_interesting(rhizome_manifest *m);
+enum rhizome_bundle_status rhizome_is_bar_interesting(const rhizome_bar_t *bar);
+enum rhizome_bundle_status rhizome_is_interesting(const rhizome_bid_t *bid, uint64_t version);
+#define rhizome_is_manifest_interesting(M) rhizome_is_interesting(&(M)->keypair.public_key, (M)->version)
 enum rhizome_bundle_status rhizome_retrieve_manifest(const rhizome_bid_t *bid, rhizome_manifest *m);
 enum rhizome_bundle_status rhizome_retrieve_manifest_by_prefix(const unsigned char *prefix, unsigned prefix_len, rhizome_manifest *m);
+enum rhizome_bundle_status rhizome_retrieve_manifest_by_hash_prefix(const uint8_t *prefix, unsigned prefix_len, rhizome_manifest *m);
+enum rhizome_bundle_status rhizome_retrieve_bar_by_hash_prefix(const uint8_t *prefix, unsigned prefix_len, rhizome_bar_t *bar);
 int rhizome_advertise_manifest(struct subscriber *dest, rhizome_manifest *m);
 int rhizome_delete_bundle(const rhizome_bid_t *bidp);
 int rhizome_delete_manifest(const rhizome_bid_t *bidp);
@@ -648,35 +639,7 @@ int rhizome_delete_file(const rhizome_filehash_t *hashp);
 #define RHIZOME_VERIFY 1
 
 int rhizome_fetching_get_fds(struct pollfd *fds,int *fdcount,int fdmax);
-enum rhizome_secret_disposition {
-    FOUND_RHIZOME_SECRET = 0,
-    IDENTITY_NOT_FOUND,
-    IDENTITY_HAS_NO_RHIZOME_SECRET,
-};
-enum rhizome_secret_disposition find_rhizome_secret(const sid_t *authorSidp, size_t *rs_len, const unsigned char **rs);
-int rhizome_bk_xor_stream(
-  const rhizome_bid_t *bidp,
-  const unsigned char *rs,
-  const size_t rs_len,
-  unsigned char *xor_stream,
-  int xor_stream_byte_count);
-int rhizome_bk2secret(
-  const rhizome_bid_t *bidp,
-  const unsigned char *rs, const size_t rs_len,
-  /* The BK need only be the length of the secret half of the secret key */
-  const unsigned char bkin[RHIZOME_BUNDLE_KEY_BYTES],
-  unsigned char secret[crypto_sign_edwards25519sha512batch_SECRETKEYBYTES]
-		      );
-int rhizome_secret2bk(
-  const rhizome_bid_t *bidp,
-  const unsigned char *rs, const size_t rs_len,
-  /* The BK need only be the length of the secret half of the secret key */
-  unsigned char bkout[RHIZOME_BUNDLE_KEY_BYTES],
-  const unsigned char secret[crypto_sign_edwards25519sha512batch_SECRETKEYBYTES]
-);
-int rhizome_sign_hash_with_key(rhizome_manifest *m,const unsigned char *sk,
-			       const unsigned char *pk,rhizome_signature *out);
-int rhizome_verify_bundle_privatekey(const unsigned char *sk, const unsigned char *pk);
+
 int rhizome_queue_ignore_manifest(const unsigned char *bid_prefix, int prefix_len, int timeout);
 int rhizome_ignore_manifest_check(const unsigned char *bid_prefix, int prefix_len);
 
@@ -688,6 +651,7 @@ struct rhizome_list_cursor {
   const char *name;
   bool_t is_sender_set;
   bool_t is_recipient_set;
+  bool_t oldest_first;
   sid_t sender;
   sid_t recipient;
   // If set, then the cursor moves in ascending (chronological) order starting
@@ -709,10 +673,6 @@ int rhizome_list_next(struct rhizome_list_cursor *);
 void rhizome_list_commit(struct rhizome_list_cursor *);
 void rhizome_list_release(struct rhizome_list_cursor *);
 
-/* one manifest is required per candidate, plus a few spare.
-   so MAX_RHIZOME_MANIFESTS must be > MAX_CANDIDATES. 
-*/
-#define MAX_RHIZOME_MANIFESTS 40
 #define MAX_CANDIDATES 32
 
 int rhizome_suggest_queue_manifest_import(rhizome_manifest *m, const struct socket_address *addr, const struct subscriber *peer);
@@ -745,11 +705,12 @@ struct rhizome_write
   sqlite3_blob *sql_blob;
   
   rhizome_filehash_t id;
-  uint8_t id_known;
-  uint8_t crypt;
-  
+  uint8_t id_known:1;
+  uint8_t crypt:1;
+  uint8_t journal:1;
+
   unsigned char key[RHIZOME_CRYPT_KEY_BYTES];
-  unsigned char nonce[crypto_stream_xsalsa20_NONCEBYTES];
+  unsigned char nonce[crypto_box_NONCEBYTES];
 };
 
 struct rhizome_read_buffer{
@@ -774,7 +735,7 @@ struct rhizome_read
   uint8_t crypt;
   rhizome_filehash_t id;
   unsigned char key[RHIZOME_CRYPT_KEY_BYTES];
-  unsigned char nonce[crypto_stream_xsalsa20_NONCEBYTES];
+  unsigned char nonce[crypto_box_NONCEBYTES];
 };
 
 int rhizome_received_content(const unsigned char *bidprefix,uint64_t version, 
@@ -810,7 +771,6 @@ void rhizome_direct_bundle_iterator_unlimit(rhizome_direct_bundle_cursor *r);
 int rhizome_direct_bundle_iterator_pickle_range(rhizome_direct_bundle_cursor *r,
 						unsigned char *pickled,
 						int pickle_buffer_size);
-rhizome_manifest *rhizome_direct_get_manifest(unsigned char *bid_prefix, size_t prefix_length);
 int rhizome_direct_bundle_iterator_unpickle_range(rhizome_direct_bundle_cursor *r,
 						  const unsigned char *pickled,
 						  int pickle_buffer_size);
@@ -864,15 +824,14 @@ extern rhizome_direct_sync_request *rd_sync_handles[RHIZOME_DIRECT_MAX_SYNC_HAND
 extern int rd_sync_handle_count;
 
 rhizome_direct_sync_request
-*rhizome_direct_new_sync_request(
-				 void (*transport_specific_dispatch_function)
-				 (struct rhizome_direct_sync_request *),
-				 size_t buffer_size, int interval, int mode, 
+*rhizome_direct_new_sync_request(void (*transport_specific_dispatch_function)(struct rhizome_direct_sync_request *),
+				 size_t buffer_size,
+                                 int interval,
+                                 int mode, 
 				 void *transport_specific_state);
 int rhizome_direct_continue_sync_request(rhizome_direct_sync_request *r);
 int rhizome_direct_conclude_sync_request(rhizome_direct_sync_request *r);
-rhizome_direct_bundle_cursor *rhizome_direct_get_fill_response
-(unsigned char *buffer,int size,int max_response_bytes);
+rhizome_direct_bundle_cursor *rhizome_direct_get_fill_response(unsigned char *buffer,int size,int max_response_bytes);
 
 typedef struct rhizome_direct_transport_state_http {
   int port;
@@ -909,7 +868,7 @@ int rhizome_fetch_has_queue_space(unsigned char log2_size);
 
 /* Rhizome storage methods */
 
-int rhizome_exists(const rhizome_filehash_t *hashp);
+enum rhizome_payload_status rhizome_exists(const rhizome_filehash_t *hashp);
 enum rhizome_payload_status rhizome_open_write(struct rhizome_write *write, const rhizome_filehash_t *expectedHashp, uint64_t file_length);
 int rhizome_write_buffer(struct rhizome_write *write_state, uint8_t *buffer, size_t data_size);
 int rhizome_random_write(struct rhizome_write *write_state, uint64_t offset, uint8_t *buffer, size_t data_size);
@@ -917,6 +876,7 @@ enum rhizome_payload_status rhizome_write_open_manifest(struct rhizome_write *wr
 enum rhizome_payload_status rhizome_write_open_journal(struct rhizome_write *write, rhizome_manifest *m, uint64_t advance_by, uint64_t append_size);
 int rhizome_write_file(struct rhizome_write *write, const char *filename, off_t offset, uint64_t length);
 void rhizome_fail_write(struct rhizome_write *write);
+int is_rhizome_write_open(const struct rhizome_write *write);
 enum rhizome_payload_status rhizome_finish_write(struct rhizome_write *write);
 enum rhizome_payload_status rhizome_finish_store(struct rhizome_write *write, rhizome_manifest *m, enum rhizome_payload_status status);
 enum rhizome_payload_status rhizome_import_payload_from_file(rhizome_manifest *m, const char *filepath);

@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "strbuf.h"
 #include "strbuf_helpers.h"
 #include "fdqueue.h"
+#include "socket.h"
 
 /* Generic HTTP request handling.
  *
@@ -101,9 +102,12 @@ struct http_request_headers {
   struct http_origin origin;
   struct http_range content_ranges[5];
   struct http_client_authorization authorization;
+  bool_t expect:1;
+  bool_t chunked:1;
 };
 
 struct http_response_headers {
+  uint8_t minor_version;
   http_size_t content_length;
   http_size_t content_range_start; // range_end = range_start + content_length - 1
   http_size_t resource_length; // size of entire resource
@@ -188,7 +192,7 @@ struct http_request {
   // The following control the lifetime of this struct.
   enum http_request_phase { RECEIVE, TRANSMIT, PAUSE, DONE } phase;
   void (*finalise)(struct http_request *);
-  void (*free)(void*);
+  void (*release)(void*);
   // Identify request from others being run.  Monotonic counter feeds it.  Only
   // used for debugging when we write post-<uuid>.log files for multi-part form
   // requests.
@@ -200,7 +204,7 @@ struct http_request {
   // The following are used for parsing the HTTP request.
   time_ms_t initiate_time; // time connection was initiated
   time_ms_t idle_timeout; // disconnect if no bytes received for this long
-  struct sockaddr_in client_sockaddr_in; // caller may supply this
+  struct socket_address client_addr; // caller may supply this
   // The parsed HTTP request is accumulated into the following fields.
   const char *verb; // points to nul terminated static string, "GET", "PUT", etc.
   const char *path; // points into buffer; nul terminated
@@ -215,6 +219,7 @@ struct http_request {
   // Parsing is done by setting 'parser' to point to a series of parsing
   // functions as the parsing state progresses.
   HTTP_REQUEST_PARSER *parser; // current parser function
+  HTTP_REQUEST_PARSER *decoder; // decode any transfer encoding
   // The caller may set these up, and they are invoked by the parser as request
   // parsing reaches different stages.
   HTTP_REQUEST_PARSER *handle_first_line; // called after first line is parsed
@@ -223,10 +228,14 @@ struct http_request {
   // The following are used for managing the buffer during RECEIVE phase.
   char *reserved; // end of reserved data in buffer[]
   char *received; // start of received data in buffer[]
-  char *end; // end of received data in buffer[]
+  char *end; // end of decoded data in buffer[]
+  char *decode_ptr; // end of received data in buffer[]
+  char *end_received; // end of received data in buffer[]
   char *parsed; // start of unparsed data in buffer[]
   char *cursor; // for parsing
   http_size_t request_content_remaining;
+  enum chunk_state {CHUNK_SIZE, CHUNK_DATA, CHUNK_NEWLINE} chunk_state;
+  uint64_t chunk_size;
   // The following are used for parsing a multipart body.
   enum mime_state { START, PREAMBLE, HEADER, BODY, EPILOGUE } form_data_state;
   struct http_mime_handler form_data;

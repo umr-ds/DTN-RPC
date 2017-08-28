@@ -21,8 +21,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define __SERVAL_DNA__OVERLAY_ADDRESS_H
 
 #include "constants.h"
+#include "serval_types.h" // for sid_t
 #include "os.h" // for time_ms_t
 #include "socket.h"
+#include "nibble_tree.h"
 
 // not reachable
 #define REACHABLE_NONE 0
@@ -52,13 +54,11 @@ struct overlay_buffer;
 // This structure supports both our own routing protocol which can store calculation details in *node 
 // or IP4 addresses reachable via any other kind of normal layer3 routing protocol, eg olsr
 struct subscriber{
+  // minimum abbreviation length, in bits.
+  // Note this must be here to match the memory layout of struct tree_record
+  size_t tree_depth;
   sid_t sid;
-  // minimum abbreviation length, in 4bit nibbles.
-  int abbreviate_len;
-  
-  // should we send the full address once?
-  int send_full;
-  
+
   int max_packet_version;
   
   // link state routing information
@@ -66,6 +66,8 @@ struct subscriber{
   
   // rhizome sync state
   struct rhizome_sync *sync_state;
+  struct rhizome_sync_keys *sync_keys_state;
+  uint8_t sync_version;
 
   // result of routing calculations;
   int reachable;
@@ -83,10 +85,14 @@ struct subscriber{
   time_ms_t last_explained;
   
   // public signing key details for remote peers
-  unsigned char sas_public[SAS_SIZE];
-  time_ms_t sas_last_request;
-  unsigned char sas_valid;
-  
+  identity_t id_public;
+  time_ms_t id_last_request;
+  uint8_t id_valid:1;
+  uint8_t id_combined:1;
+
+  // should we send the full address once?
+  uint8_t send_full:1;
+
   // private keys for local identities
   struct keyring_identity *identity;
 };
@@ -98,6 +104,7 @@ struct broadcast{
 #define DECODE_FLAG_ENCODING_HEADER (1<<0)
 #define DECODE_FLAG_INVALID_ADDRESS (1<<1)
 #define DECODE_FLAG_DONT_EXPLAIN (1<<2)
+#define DECODE_FLAG_EXTRA_BITS (1<<3)
 
 struct decode_context{
   struct overlay_interface *interface;
@@ -112,13 +119,13 @@ struct decode_context{
   struct subscriber *point_to_point_device;
 };
 
-extern __thread struct subscriber *my_subscriber;
+struct subscriber *get_my_subscriber(bool_t create);
+void release_my_subscriber();
 extern __thread struct subscriber *directory_service;
 
-struct subscriber *_find_subscriber(struct __sourceloc, const unsigned char *sid, int len, int create);
-#define find_subscriber(sid, len, create) _find_subscriber(__WHENCE__, sid, len, create)
+struct subscriber *find_subscriber(const uint8_t *sid, int len, int create);
 
-void enum_subscribers(struct subscriber *start, int(*callback)(struct subscriber *, void *), void *context);
+void enum_subscribers(struct subscriber *start, walk_callback callback, void *context);
 int set_reachable(struct subscriber *subscriber, struct network_destination *destination, struct subscriber *next_hop, int hop_count, struct subscriber *prior_hop);
 struct network_destination *load_subscriber_address(struct subscriber *subscriber);
 

@@ -23,25 +23,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <sys/types.h>
 #include <stdint.h>
 #include <limits.h>
-#include "nacl.h"
-#include "sha2.h"
-#include "str.h"
+#include <sodium.h>
+#include "str.h"        // for alloca_tohex(), is_all_matching(), etc.
 
-#ifndef __RHIZOME_TYPES_INLINE
-# if __GNUC__ && !__GNUC_STDC_INLINE__
-#  define __RHIZOME_TYPES_INLINE extern inline
-# else
-#  define __RHIZOME_TYPES_INLINE inline
-# endif
-#endif
-
-#define RHIZOME_BUNDLE_ID_BYTES         crypto_sign_edwards25519sha512batch_PUBLICKEYBYTES
+#define RHIZOME_BUNDLE_ID_BYTES         crypto_sign_PUBLICKEYBYTES
 #define RHIZOME_BUNDLE_ID_STRLEN        (RHIZOME_BUNDLE_ID_BYTES * 2)
-#define RHIZOME_BUNDLE_KEY_BYTES        (crypto_sign_edwards25519sha512batch_SECRETKEYBYTES - crypto_sign_edwards25519sha512batch_PUBLICKEYBYTES)
+#define RHIZOME_BUNDLE_KEY_BYTES        (crypto_sign_SECRETKEYBYTES - crypto_sign_PUBLICKEYBYTES)
 #define RHIZOME_BUNDLE_KEY_STRLEN       (RHIZOME_BUNDLE_KEY_BYTES * 2)
 #define RHIZOME_FILEHASH_BYTES          crypto_hash_sha512_BYTES
 #define RHIZOME_FILEHASH_STRLEN         (RHIZOME_FILEHASH_BYTES * 2)
-#define RHIZOME_CRYPT_KEY_BYTES         crypto_stream_xsalsa20_ref_KEYBYTES
+#define RHIZOME_CRYPT_KEY_BYTES         crypto_box_SECRETKEYBYTES
 #define RHIZOME_CRYPT_KEY_STRLEN        (RHIZOME_CRYPT_KEY_BYTES * 2)
 
 #define RHIZOME_PASSPHRASE_MAX_STRLEN   80
@@ -69,9 +60,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  * @author Andrew Bettison <andrew@servalproject.com>
  */
 
-typedef struct rhizome_bid_binary {
-    unsigned char binary[RHIZOME_MANIFEST_ID_BYTES];
-} rhizome_bid_t;
+typedef struct sign_binary rhizome_bid_t;
 
 #define RHIZOME_BID_ZERO ((rhizome_bid_t){{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}})
 #define RHIZOME_BID_MAX ((rhizome_bid_t){{0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}})
@@ -99,7 +88,6 @@ typedef struct rhizome_filehash_binary {
 int cmp_rhizome_filehash_t(const rhizome_filehash_t *a, const rhizome_filehash_t *b);
 int str_to_rhizome_filehash_t(rhizome_filehash_t *fh, const char *hex);
 int strn_to_rhizome_filehash_t(rhizome_filehash_t *fh, const char *hex, size_t hexlen);
-int parse_rhizome_filehash_t(rhizome_filehash_t *fh, const char *hex, ssize_t hexlen, const char **endp);
 
 /* Fundamental data type: Rhizome Bundle Key (BK)
  *
@@ -112,9 +100,7 @@ typedef struct rhizome_bk_binary {
 
 #define RHIZOME_BK_NONE ((rhizome_bk_t){{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}})
 
-__RHIZOME_TYPES_INLINE int rhizome_is_bk_none(const rhizome_bk_t *bk) {
-    return is_all_matching(bk->binary, sizeof bk->binary, 0);
-}
+int rhizome_is_bk_none(const rhizome_bk_t *bk);
 
 #define alloca_tohex_rhizome_bk_t(bk) alloca_tohex((bk).binary, sizeof (*(rhizome_bk_t*)0).binary)
 int cmp_rhizome_bk_t(const rhizome_bk_t *a, const rhizome_bk_t *b);

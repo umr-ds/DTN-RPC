@@ -43,6 +43,7 @@ struct form_buf_malloc {
 };
 
 struct httpd_request;
+struct meshmb_session;
 
 int form_buf_malloc_init(struct form_buf_malloc *, size_t size_limit);
 int form_buf_malloc_accumulate(struct httpd_request *, const char *partname, struct form_buf_malloc *, const char *, size_t);
@@ -107,16 +108,8 @@ typedef struct httpd_request
     /* For receiving RESTful Rhizome insert request
      */
     struct {
-      // If this is really a (journal) append request
-      bool_t appending;
       // Which part is currently being received
       const char *current_part;
-      // Which parts have already been received
-      bool_t received_author;
-      bool_t received_secret;
-      bool_t received_bundleid;
-      bool_t received_manifest;
-      bool_t received_payload;
       // For storing the "bundle-author" hex SID as we receive it
       char author_hex[SID_STRLEN];
       size_t author_hex_len;
@@ -131,12 +124,23 @@ typedef struct httpd_request
       // The "force-new" parameter
       char force_new_text[5]; // enough for "false"
       size_t force_new_text_len;
-      bool_t force_new;
+
       // For storing the manifest text (malloc/realloc) as we receive it
       struct form_buf_malloc manifest;
       // For receiving the payload
       uint64_t payload_size;
       struct rhizome_write write;
+
+      // If this is really a (journal) append request
+      bool_t appending:1;
+      bool_t importing:1;
+      // Which parts have already been received
+      bool_t received_author:1;
+      bool_t received_secret:1;
+      bool_t received_bundleid:1;
+      bool_t received_manifest:1;
+      bool_t received_payload:1;
+      bool_t force_new:1;
     }
       insert;
 
@@ -176,15 +180,15 @@ typedef struct httpd_request
     /* For responses that list MeshMS messages in a single conversation.
     */
     struct {
-      struct newsince_position {
+      struct meshms_position {
         enum meshms_which_ply which_ply;
         uint64_t offset;
+	uint64_t their_ack;
       }
         token,
         current,
         latest;
       time_ms_t end_time;
-      uint64_t highest_ack_offset;
       enum list_phase phase;
       size_t rowcount;
       struct meshms_message_iterator iter;
@@ -193,7 +197,7 @@ typedef struct httpd_request
     }
       msglist;
 
-    /* For responses that send a MeshMS message.
+    /* For responses that send a MeshMS / MeshMB message.
     */
     struct {
       // Which part is currently being received
@@ -204,7 +208,33 @@ typedef struct httpd_request
       struct form_buf_malloc message;
     }
       sendmsg;
-      
+
+    struct{
+      struct message_ply_read ply_reader;
+      enum list_phase phase;
+      uint64_t start_offset;
+      uint64_t current_offset;
+      uint64_t end_offset;
+      size_t rowcount;
+      time_ms_t end_time;
+      time_s_t timestamp;
+      bool_t eof;
+    } plylist;
+
+    struct {
+      rhizome_bid_t bundle_id;
+      struct meshmb_activity_iterator *iterator;
+      struct meshmb_session *session;
+      uint8_t generation;
+      enum list_phase phase;
+      size_t rowcount;
+      time_ms_t end_time;
+      uint64_t start_ack_offset;
+      uint64_t current_ack_offset;
+      uint64_t current_msg_offset;
+      uint64_t end_ack_offset;
+      uint64_t end_msg_offset;
+    } meshmb_feeds;
     
     struct {
       int fd;

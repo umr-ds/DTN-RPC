@@ -8,6 +8,7 @@
 #include "msp_client.h"
 #include "serval.h"
 #include "server.h"
+#include "overlay_buffer.h"
 
 #include "rpc_server.h"
 #include "rpc_client.h"

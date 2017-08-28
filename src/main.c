@@ -73,6 +73,7 @@ int main (int argc, char **argv) {
 		pfatal("Servald not running. Aborting.");
 		return -1;
 	}
+	serverMode = SERVER_RUNNING;
 
 	// Make sure that at least one param is set.
 	if (argc < 2) {
@@ -138,7 +139,7 @@ int main (int argc, char **argv) {
 		}
 
 		// Get length of additional arguments...
-		unsigned int num_commas;
+		int num_commas;
 		char *last_arg = argv[argc - 1];
 		int last_arg_len = strlen(argv[argc - 1]);
 		for (num_commas = 0; last_arg[num_commas]; last_arg[num_commas]==',' ? num_commas++ : *last_arg++);

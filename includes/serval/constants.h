@@ -92,7 +92,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define MONITOR_PEERS (1<<2)
 #define MONITOR_DNAHELPER (1<<3)
 #define MONITOR_LINKS (1<<4)
-#define MONITOR_QUIT (1<<5)
+#define MONITOR_QUIT_ON_DISCONNECT (1<<5)
 #define MONITOR_INTERFACE (1<<6)
 
 #define MAX_SIGNATURES 16
@@ -112,6 +112,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define MDP_PORT_DIRECTORY 15
 #define MDP_PORT_RHIZOME_MANIFEST_REQUEST 16
 #define MDP_PORT_RHIZOME_SYNC 17
+#define MDP_PORT_RHIZOME_SYNC_KEYS 18
 #define MDP_PORT_NOREPLY 0x3f
 
 #define MDP_TYPE_MASK 0xff
@@ -119,7 +120,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define MDP_FORCE 0x0100
 #define MDP_NOCRYPT 0x0200
 #define MDP_NOSIGN 0x0400
-#define MDP_MTU 1200
+#define MDP_OVERLAY_MTU 1200
+// worst case packet header overheads for port encoding and crypto envelopes (approx);
+#define MDP_MTU (MDP_OVERLAY_MTU - 40)
 
 #define MDP_TX 1
 #define MDP_BIND 3
@@ -138,6 +141,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 /* 59*32 < (MDP_MTU-100), so up to 59 SIDs in a single reply.
    Multiple replies can be used to respond with more. */
 #define MDP_MAX_SID_REQUEST 59
+
+
+#define MSP_PAYLOAD_PREAMBLE_SIZE  5
+#define MSP_MESSAGE_SIZE           1024
+//should be something like this...; (MDP_MTU - MSP_PAYLOAD_PREAMBLE_SIZE)
+
+#define MSP_STATE_UNINITIALISED     (0)
+#define MSP_STATE_LISTENING         (1<<0)
+#define MSP_STATE_RECEIVED_DATA     (1<<1)
+#define MSP_STATE_RECEIVED_PACKET   (1<<2)
+#define MSP_STATE_SHUTDOWN_LOCAL    (1<<3)
+#define MSP_STATE_SHUTDOWN_REMOTE   (1<<4)
+// this connection is about to be free'd, release any other resources or references to the state
+#define MSP_STATE_CLOSED            (1<<5)
+// something has gone wrong somewhere
+#define MSP_STATE_ERROR             (1<<6)
+// is there space for sending more data?
+#define MSP_STATE_DATAOUT           (1<<7)
+#define MSP_STATE_STOPPED           (1<<8)
+
+// stream timeout
+#define MSP_TIMEOUT 10000
+
 
 /* Maximum amount of audio to cram into a VoMP audio packet.
    More lets us include preemptive retransmissions.

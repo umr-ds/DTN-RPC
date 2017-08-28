@@ -134,7 +134,6 @@ int _rpc_server_excecute (uint8_t *result_payload, struct RPCProcedure rp) {
     char bin[strlen(SYSCONFDIR) + strlen(BIN_FOLDER) + strlen(rp.name)];
     sprintf(bin, "%s%s%s", SYSCONFDIR, BIN_FOLDER, rp.name);
 
-	// pdebug("");
 	if (access(bin, F_OK)){
 		pfatal("Binary \"%s\" not found. It should be in %s%s. Aborting.", rp.name, SYSCONFDIR, BIN_FOLDER);
 		return 0;
@@ -201,11 +200,11 @@ int rpc_server_listen () {
     if (_rpc_server_msp_setup() == -1) {
 		pfatal("Could not setup MSP listener. Aborting.");
 		return -1;
-	}
+    }
 	if (_rpc_server_mdp_setup() == -1) {
 		pfatal("Could not setup MDP listener. Aborting.");
 		return -1;
-	}
+    }
     // Run RPC server.
     while (server_running < 2) {
         if (server_running == 1) {
@@ -214,7 +213,7 @@ int rpc_server_listen () {
 			_rpc_server_mdp_cleanup();
             break;
         }
-		// Process the three main parts.
+        // Process the three main parts.
 		_rpc_server_msp_process();
 		_rpc_server_mdp_process();
         if (_rpc_server_rhizome_process() == -1) {
