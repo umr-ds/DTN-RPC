@@ -1,6 +1,9 @@
 # ServalRPC
 This documentation provides all needed information to use RPCs via Serval.
 
+For more information and a detailed discussion about the design and the implementation for DTN-RPC, see our Paper:
+*Artur Sterz, Lars Baumgärtner, Ragnar Mogk, Mira Mezini and Bernd Freisleben*, **DTN-RPC: Remote Procedure Calls for Disruption-Tolerant Networking** in IFIP Networking 2017 Conference and Workshops (Networking’2017), Stockholm, Sweden
+
 ## Building
 There are three requirements, `libcurl`, `libsodium` and Serval. You can install the libs with `sudo apt install libcurl4-openssl-dev` and `sudo apt install libsodium-dev` (on other distros and OSes you have to use the respective package manager or compile the libs yourself). Serval has to be installed manually. For more information and installation instructions for Serval, see the Github page of the [Serval Project](https://github.com/servalproject/serval-dna).
 
